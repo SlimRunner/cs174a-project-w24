@@ -1,4 +1,5 @@
 import sys
+import webbrowser
 
 PORT = 8000
 
@@ -47,4 +48,5 @@ else:
     httpd = socketserver.TCPServer(("", PORT), Handler)
 
     print("serving at port", PORT)
+    webbrowser.open(f"http://localhost:{PORT}")
     httpd.serve_forever()
