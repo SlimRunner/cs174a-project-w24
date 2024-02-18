@@ -1,98 +1,13 @@
-import { defs, tiny } from "./examples/common.js";
+import { defs, tiny } from "../examples/common.js";
 
 const {
-  Vector,
-  Vector3,
-  vec,
-  vec3,
   vec4,
   color,
-  hex_color,
   Shader,
   Matrix,
-  Mat4,
-  Light,
-  Shape,
-  Material,
-  Scene,
 } = tiny;
 
-const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version();
-
-export class Beach_Coast extends Scene {
-  constructor() {
-    // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
-    super();
-
-    // At the beginning of our program, load one of each of these shape definitions onto the GPU.
-    this.shapes = {
-      square: new defs.Square()
-    };
-
-    // *** Materials
-    this.materials = {
-      // standard has max specularity and diffuse, zero  ambient
-      phongStandard: new Material(new defs.Phong_Shader(), {color: color(1,1,1,1)}),
-    };
-
-    this.initial_camera_location = Mat4.look_at(
-      vec3(0, 10, 20),
-      vec3(0, 0, 0),
-      vec3(0, 1, 0)
-    );
-  }
-
-  make_control_panel() {
-    // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-    // this.key_triggered_button(
-    //   "Button Label",
-    //   ["Meta", "key"],
-    //   callback
-    // );
-  }
-
-  display(context, program_state) {
-    // display():  Called once per frame of animation.
-    // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
-    if (!context.scratchpad.controls) {
-      this.children.push(
-        (context.scratchpad.controls = new defs.Movement_Controls())
-      );
-      // Define the global camera and projection matrices, which are stored in program_state.
-      program_state.set_camera(this.initial_camera_location);
-    }
-
-    program_state.projection_transform = Mat4.perspective(
-      Math.PI / 4,
-      context.width / context.height,
-      0.1,
-      1000
-    );
-
-    const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
-    let model_transform = Mat4.identity();
-
-    // why was the lighting was AFTER the draw call
-    // that always crashes lol...
-    // TODO: Lighting (Requirement 2)
-    const light_position = vec4(0, 8, 0, 1);
-    // The parameters of the Light are: position, color, size
-    program_state.lights = [
-      new Light(vec4(0, 0, 1, 1), color(1,1,1,1), 100),
-      new Light(vec4(0, 0, -1, 1), color(1,1,1,1), 100),
-      new Light(vec4(2, 0, 0, 1), color(1,1,1,1), 100),
-    ];
-
-    this.shapes.square.draw(
-      context,
-      program_state,
-      model_transform,
-      this.materials.phongStandard
-    );
-  }
-}
-
-class Gouraud_Shader extends Shader {
+export class Gouraud_Shader extends Shader {
   // This is a Shader using Phong_Shader as template
   // TODO: Modify the glsl coder here to create a Gouraud Shader (Planet 2)
 
@@ -269,6 +184,109 @@ class Gouraud_Shader extends Shader {
     material = Object.assign({}, defaults, material);
 
     this.send_material(context, gpu_addresses, material);
+    this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
+  }
+}
+
+export class UV_Shader extends Shader {
+  // This is a Shader using Phong_Shader as template
+  // TODO: Modify the glsl coder here to create a Gouraud Shader (Planet 2)
+
+  constructor(num_lights = 2) {
+    super();
+  }
+
+  shared_glsl_code() {
+    // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+    return ` 
+      precision mediump float;
+
+      varying vec3 vViewPosition;
+      varying vec3 uvs;
+
+      float mapRange(float value, float minValue, float maxValue, float newMinValue, float newMaxValue) {
+        return mix(newMinValue, newMaxValue, (value - minValue) / (maxValue - minValue));
+      }
+      `;
+  }
+
+  vertex_glsl_code() {
+    // ********* VERTEX SHADER *********
+    return (
+      `
+      ${this.shared_glsl_code()}
+      attribute vec3 position, normal;
+      
+      uniform mat4 projection;
+      uniform mat4 view;
+      uniform mat4 model;
+      uniform mat4 fulltrans;
+
+      void main() {
+        uvs.x = mapRange(normal.x,-1.0,1.0,0.0,1.0);
+        uvs.y = mapRange(normal.y,-1.0,1.0,0.0,1.0);
+        uvs.z = mapRange(normal.z,0.0,-1.0,0.5,1.0);
+        // uvs = normal;
+        vec4 p4 = vec4(position, 1.0);
+        //determine view space p4
+        mat4 modelViewMatrix = view * model;
+        vec4 viewModelPosition = modelViewMatrix * p4;
+        
+        //pass varyings to fragment shader
+        vViewPosition = viewModelPosition.xyz;
+      
+        //determine final 3D position
+        gl_Position = projection * viewModelPosition;
+      }`
+    );
+  }
+
+  fragment_glsl_code() {
+    // ********* FRAGMENT SHADER *********
+    // A fragment is a pixel that's overlapped by the current triangle.
+    // Fragments affect the final image or get discarded due to depth.
+    return (
+      `
+      ${this.shared_glsl_code()}
+      
+      void main() {
+        gl_FragColor = vec4(uvs, 1.0);
+      }`
+    );
+  }
+
+  send_material(gl, gpu, material) {
+    // nothing to do
+  }
+
+  send_gpu_state(gl, gpu, gpu_state, model_transform) {
+    const PCM = gpu_state.projection_transform
+      .times(gpu_state.camera_inverse)
+      .times(model_transform)
+    gl.uniformMatrix4fv(
+      gpu.projection,
+      false,
+      Matrix.flatten_2D_to_1D(gpu_state.projection_transform.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.view,
+      false,
+      Matrix.flatten_2D_to_1D(gpu_state.camera_inverse.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.model,
+      false,
+      Matrix.flatten_2D_to_1D(model_transform.transposed())
+    );
+  }
+
+  update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+    const defaults = {
+      color: color(0, 0, 0, 1)
+    };
+    material = Object.assign({}, defaults, material);
+
+    // this.send_material(context, gpu_addresses, material);
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
