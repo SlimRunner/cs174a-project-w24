@@ -1,8 +1,23 @@
-*.gif
-*.ico
-*.png
-*.jpg
-*.obj
-*.bat
-*.command
+# webstorm
+.idea/
+
+# MacOS
+.DS_Store
+
+# VSCode Ignore
 .vscode/*
+# !.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# remove binary documents
+*.docx
+*.pdf
