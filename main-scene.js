@@ -1,49 +1,47 @@
-import {defs} from './examples/common.js';
+import {defs, tiny} from './examples/common.js';
+import {Axes_Viewer, Axes_Viewer_Test_Scene} from "./examples/axes-viewer.js"
+import {Collision_Demo, Inertia_Demo} from "./examples/collisions-demo.js"
+import {Many_Lights_Demo} from "./examples/many-lights-demo.js"
+import {Obj_File_Demo} from "./examples/obj-file-demo.js"
+import {Scene_To_Texture_Demo} from "./examples/scene-to-texture-demo.js"
+import {Surfaces_Demo} from "./examples/surfaces-demo.js"
+import {Text_Demo} from "./examples/text-demo.js"
+import {Transforms_Sandbox} from "./examples/transforms-sandbox.js"
+import {Beach_Coast} from "./beach-coast.js";
 
-// Now everything is loaded from tiny-graphics.js and its helper files. An object "tiny" wraps its contents, along
-// with "defs" for wrapping some additional utilities included in common.js.
+// Pull these names into this module's scope for convenience:
+const {
+    Vector, Vector3, vec, vec3, vec4, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene,
+    Canvas_Widget, Code_Widget, Text_Widget
+} = tiny;
 
-// ******************** Before selecting which demo we want to display, we have to load its code. If this page is hosted
-// on the internet, the demo's class can be injected right here by the server.
-//
-// In this case, it's not, so you'll instead Load demos from files in your directory and copy them into "defs."
+// Now we have loaded everything in the files tiny-graphics.js, tiny-graphics-widgets.js, and common.js.
+// This yielded "tiny", an object wrapping the stuff in the first two files, and "defs" for wrapping all the rest.
+
+// ******************** Extra step only for when executing on a local machine:
+//                      Load any more files in your directory and copy them into "defs."
+//                      (On the web, a server should instead just pack all these as well
+//                      as common.js into one file for you, such as "dependencies.js")
 
 const Minimal_Webgl_Demo = defs.Minimal_Webgl_Demo;
-import {Axes_Viewer, Axes_Viewer_Test_Scene, Matrix_Game}
-                    from "./examples/axes-viewer.js";
-import {Demonstration}
-                    from "./examples/demonstration.js";
-import {Inertia_Demo, Collision_Demo}
-                    from "./examples/collisions-demo.js";
-import {Many_Lights_Demo}
-                    from "./examples/many-lights-demo.js";
-import {Obj_File_Demo}
-                    from "./examples/obj-file-demo.js";
-import {Parametric_Surfaces}
-                    from "./examples/parametric-surfaces.js";
-import {Scene_To_Texture_Demo}
-                    from "./examples/scene-to-texture-demo.js";
-import {Text_Demo}
-                    from "./examples/text-demo.js";
-import {Transforms_Sandbox_Base, Transforms_Sandbox}
-                    from "./examples/transforms-sandbox.js";
 
-Object.assign (defs,
-               {Minimal_Webgl_Demo},
-               {Axes_Viewer, Axes_Viewer_Test_Scene, Matrix_Game},
-               {Demonstration},
-               {Inertia_Demo, Collision_Demo},
-               {Many_Lights_Demo},
-               {Obj_File_Demo},
-               {Parametric_Surfaces},
-               {Scene_To_Texture_Demo},
-               {Text_Demo},
-               {Transforms_Sandbox_Base, Transforms_Sandbox}
+Object.assign(defs,
+    {Axes_Viewer, Axes_Viewer_Test_Scene},
+    {Inertia_Demo, Collision_Demo},
+    {Many_Lights_Demo},
+    {Obj_File_Demo},
+    {Scene_To_Texture_Demo},
+    {Surfaces_Demo},
+    {Text_Demo},
+    {Transforms_Sandbox},
+    {Beach_Coast}
 );
 
-// ******************** SELECT THE DEMO TO DISPLAY:
+// ******************** End extra step
 
-const main_scene        = Parametric_Surfaces;
-const additional_scenes = [];
+// (Can define Main_Scene's class here)
 
-export {main_scene, additional_scenes, defs};
+const Main_Scene = Beach_Coast;
+const Additional_Scenes = [];
+
+export {Main_Scene, Additional_Scenes, Canvas_Widget, Code_Widget, Text_Widget, defs}
