@@ -29,7 +29,6 @@ export class Beach_Coast extends Scene {
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
-      square: new Square(),
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
       floor: new Square()
@@ -38,9 +37,10 @@ export class Beach_Coast extends Scene {
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
-      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1,1,1,1)}),
-      gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1,1,1,1)}),
+      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.8,color: color(1, 1, 1, 1)}),
+      gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.4,color: color(1, 1, 1, 1)}),
       uv: new Material(new UV_Shader()),
+      matte: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0, color: color(1, 1, 1, 1)})
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -88,15 +88,22 @@ export class Beach_Coast extends Scene {
 
     // The parameters of the Light are: position, color, size
     program_state.lights = [
-      new Light(vec4(-2, 2, -2, 1), color(1,1,1,1), 100),
-      new Light(vec4(2, -2, 2, 1), color(1,1,1,1), 100),
+      new Light(vec4(-5, 3, -5, 1), color(1,1,1,1), 100),
+      new Light(vec4(5, 3, 5, 1), color(1,1,1,1), 100),
     ];
 
     this.shapes.sphere.draw(
       context,
       program_state,
-      model_transform,
+      model_transform.times(Mat4.translation(0, 1, 0)),
       this.materials.uv
+    );
+
+    this.shapes.floor.draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.scale(10, 1, 10)),
+      this.materials.matte
     );
   }
 }
