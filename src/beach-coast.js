@@ -1,6 +1,7 @@
 import { defs, tiny } from "../examples/common.js";
 import { Gouraud_Shader, UV_Shader, } from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
+import { Walk_Movement } from "./movement.js";
 
 const {
   Vector,
@@ -30,7 +31,8 @@ export class Beach_Coast extends Scene {
     this.shapes = {
       square: new Square(),
       cube: new defs.Cube(),
-      sphere: new Flat_Sphere(3)
+      sphere: new Flat_Sphere(3),
+      floor: new Square()
     };
 
     // *** Materials
@@ -62,11 +64,18 @@ export class Beach_Coast extends Scene {
     // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
     if (!context.scratchpad.controls) {
       this.children.push(
-        (context.scratchpad.controls = new defs.Movement_Controls())
+        (context.scratchpad.controls = new Walk_Movement())
       );
       // Define the global camera and projection matrices, which are stored in program_state.
-      program_state.set_camera(this.initial_camera_location);
+      // program_state.set_camera(this.initial_camera_location);
     }
+
+    const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
+    // program_state.set_camera(custom_look_at(
+    //   vec3(10 * Math.cos(t), 0, 10 * Math.sin(t)),
+    //   vec3(Math.cos(t+Math.PI), 0, Math.sin(t+Math.PI)),
+    //   vec3(0, 1, 0)
+    // ));
 
     program_state.projection_transform = Mat4.perspective(
       Math.PI * 32 / 180,
@@ -75,7 +84,6 @@ export class Beach_Coast extends Scene {
       1000
     );
 
-    const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
     let model_transform = Mat4.identity();
 
     // The parameters of the Light are: position, color, size
