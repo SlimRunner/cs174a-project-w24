@@ -32,15 +32,15 @@ export class Walk_Movement extends Scene {
     this.walk_force = 22.0;
     this.turning_force = 9.28;
     this.speed_limit = 30;
-    this.turn_speed_limit = 8.8;
+    this.turn_speed_limit = 3.0;
     this.speed_decay_factor = 0.8;
     this.angular_decay_factor = 0.3;
 
     this.gravity = -40;
-    this.min_height = 0;
+    this.min_height = 1.5;
     this.jump_thrust = 0;
     this.fall_speed = 0;
-    this.height = 0;
+    this.height = this.min_height;
     this.jumping_force = 700;
 
     this.consts = Object.freeze({
@@ -110,7 +110,7 @@ export class Walk_Movement extends Scene {
     this.key_triggered_button(
       "Jump",
       [" "],
-      () => (this.jump_thrust = this.height <=0 ? this.jumping_force : 0)
+      () => (this.jump_thrust = this.height <= this.min_height ? this.jumping_force : 0)
     );
     this.key_triggered_button(
       "Forward",
@@ -173,7 +173,7 @@ export class Walk_Movement extends Scene {
     }
 
     const heading = Vector3.create(Math.cos(this.direction), 0, Math.sin(this.direction));
-    const airborne = this.height > 0;
+    const airborne = this.height > this.min_height;
 
     if (!airborne && this.jump_thrust == 0) {
       this.fall_speed = 0;
