@@ -1,5 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
-import { Gouraud_Shader, UV_Shader, } from "./custom-shaders.js";
+import { Gouraud_Shader, UV_Shader, Ripple_Shader} from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
 
 const {
@@ -39,6 +39,7 @@ export class Beach_Coast extends Scene {
       phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1,1,1,1)}),
       gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1,1,1,1)}),
       uv: new Material(new UV_Shader()),
+      ripple: new Material(new Ripple_Shader(), {color: hex_color("#B08040"), size: 2.0, period: 10.0}),
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -76,7 +77,6 @@ export class Beach_Coast extends Scene {
     );
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
-    let model_transform = Mat4.identity();
 
     // The parameters of the Light are: position, color, size
     program_state.lights = [
@@ -84,11 +84,12 @@ export class Beach_Coast extends Scene {
       new Light(vec4(2, -2, 2, 1), color(1,1,1,1), 100),
     ];
 
-    this.shapes.sphere.draw(
+    let model_transform = Mat4.scale(4, 1, 4);
+    this.shapes.square.draw(
       context,
       program_state,
       model_transform,
-      this.materials.uv
+      this.materials.ripple
     );
   }
 }

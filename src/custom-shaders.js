@@ -290,3 +290,62 @@ export class UV_Shader extends Shader {
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
+
+export class Ripple_Shader extends Shader {
+  
+    shared_glsl_code() {
+        // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+        return `
+        precision mediump float;
+        varying vec4 point_position;
+        varying vec4 center;
+        uniform float wave_size;
+        uniform float wave_period;
+        uniform vec4 shape_color;
+        `;
+    }
+
+    vertex_glsl_code() {
+        // ********* VERTEX SHADER *********
+        // TODO:  Complete the main function of the vertex shader (Extra Credit Part II).
+        return this.shared_glsl_code() + `
+        attribute vec3 position;
+        uniform mat4 model_transform;
+        uniform mat4 projection_camera_model_transform;
+        
+        void main(){
+          center = model_transform * vec4(0.0, 0.0, 0.0, 1.0);
+          point_position = model_transform * vec4(position, 1.0);
+          gl_Position = projection_camera_model_transform * vec4(position, 1.0);        
+        }`;
+    }
+
+    fragment_glsl_code() {
+        // ********* FRAGMENT SHADER *********
+        // TODO:  Complete the main function of the fragment shader (Extra Credit Part II).
+        return this.shared_glsl_code() + `
+        void main(){
+          float time = 1.0;
+          float dist = distance(point_position.xyz, center.xyz);
+          float decay = 1.0 / pow(10.0, (1.0/time));
+          float scale = 2.0 * pow(decay, dist) / time;
+          float sinusoid = sin( 10.0 * (dist - time/2.0));
+          gl_FragColor = scale * sinusoid * vec4(0.6078, 0.3961, 0.098, 1.0);
+        }`;
+    }
+  
+    send_material(gl, gpu, material) {
+      gl.uniform4fv(gpu.shape_color, material.color);
+      gl.uniform1f(gpu.wave_size, material.size);
+      gl.uniform1f(gpu.wave_period, material.period);
+    }
+  
+    update_GPU(context, gpu_addresses, graphics_state, model_transform, material) {
+        // update_GPU():  Defining how to synchronize our JavaScript's variables to the GPU's:
+        const [P, C, M] = [graphics_state.projection_transform, graphics_state.camera_inverse, model_transform],
+            PCM = P.times(C).times(M);
+        context.uniformMatrix4fv(gpu_addresses.model_transform, false, Matrix.flatten_2D_to_1D(model_transform.transposed()));
+        context.uniformMatrix4fv(gpu_addresses.projection_camera_model_transform, false,
+            Matrix.flatten_2D_to_1D(PCM.transposed()));
+    }
+}
