@@ -36,10 +36,10 @@ export class Beach_Coast extends Scene {
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
-      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1,1,1,1)}),
-      gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1,1,1,1)}),
+      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: hex_color("#B08040")}),
+      gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: hex_color("#B08040")}),
       uv: new Material(new UV_Shader()),
-      ripple: new Material(new Ripple_Shader(), {color: hex_color("#B08040"), size: 2.0, period: 10.0}),
+      ripple: new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0}),
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -89,6 +89,12 @@ export class Beach_Coast extends Scene {
       context,
       program_state,
       model_transform,
+      this.materials.ripple
+    );
+    this.shapes.square.draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.translation(1, 0, 0)),
       this.materials.ripple
     );
   }

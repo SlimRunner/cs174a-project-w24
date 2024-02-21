@@ -292,6 +292,10 @@ export class UV_Shader extends Shader {
 }
 
 export class Ripple_Shader extends Shader {
+
+    constructor(){
+        super();
+    }
   
     shared_glsl_code() {
         // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
@@ -302,6 +306,7 @@ export class Ripple_Shader extends Shader {
         uniform float wave_size;
         uniform float wave_period;
         uniform vec4 shape_color;
+        uniform float time;
         `;
     }
 
@@ -325,12 +330,11 @@ export class Ripple_Shader extends Shader {
         // TODO:  Complete the main function of the fragment shader (Extra Credit Part II).
         return this.shared_glsl_code() + `
         void main(){
-          float time = 1.0;
           float dist = distance(point_position.xyz, center.xyz);
           float decay = 1.0 / pow(10.0, (1.0/time));
-          float scale = 2.0 * pow(decay, dist) / time;
-          float sinusoid = sin( 10.0 * (dist - time/2.0));
-          gl_FragColor = scale * sinusoid * vec4(0.6078, 0.3961, 0.098, 1.0);
+          float scale = wave_size * pow(decay, dist) / time;
+          float sinusoid = sin((wave_period * (dist - time/2.0))/time);
+          gl_FragColor = scale * sinusoid * shape_color;
         }`;
     }
   
@@ -340,6 +344,10 @@ export class Ripple_Shader extends Shader {
       gl.uniform1f(gpu.wave_period, material.period);
     }
   
+    send_gpu_state(gl, gpu, gpu_state, model_transform) {
+      gl.uniform1f(gpu.time, 1.5*(gpu_state.animation_time)/1000.0)
+    }
+      
     update_GPU(context, gpu_addresses, graphics_state, model_transform, material) {
         // update_GPU():  Defining how to synchronize our JavaScript's variables to the GPU's:
         const [P, C, M] = [graphics_state.projection_transform, graphics_state.camera_inverse, model_transform],
@@ -347,5 +355,7 @@ export class Ripple_Shader extends Shader {
         context.uniformMatrix4fv(gpu_addresses.model_transform, false, Matrix.flatten_2D_to_1D(model_transform.transposed()));
         context.uniformMatrix4fv(gpu_addresses.projection_camera_model_transform, false,
             Matrix.flatten_2D_to_1D(PCM.transposed()));
+        this.send_material(context, gpu_addresses, material);
+        this.send_gpu_state(context, gpu_addresses, graphics_state, model_transform);
     }
 }
