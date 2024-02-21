@@ -31,7 +31,8 @@ export class Beach_Coast extends Scene {
     this.shapes = {
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
-      floor: new Square()
+      floor: new Square(),
+      skybox: new defs.Cube()
     };
 
     // *** Materials
@@ -62,20 +63,14 @@ export class Beach_Coast extends Scene {
   display(context, program_state) {
     // display():  Called once per frame of animation.
     // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
+
     if (!context.scratchpad.controls) {
       this.children.push(
         (context.scratchpad.controls = new Walk_Movement())
       );
-      // Define the global camera and projection matrices, which are stored in program_state.
-      // program_state.set_camera(this.initial_camera_location);
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
-    // program_state.set_camera(custom_look_at(
-    //   vec3(10 * Math.cos(t), 0, 10 * Math.sin(t)),
-    //   vec3(Math.cos(t+Math.PI), 0, Math.sin(t+Math.PI)),
-    //   vec3(0, 1, 0)
-    // ));
 
     program_state.projection_transform = Mat4.perspective(
       Math.PI * 32 / 180,
@@ -91,6 +86,19 @@ export class Beach_Coast extends Scene {
       new Light(vec4(-5, 3, -5, 1), color(1,1,1,1), 100),
       new Light(vec4(5, 3, 5, 1), color(1,1,1,1), 100),
     ];
+
+    const cam_loc = program_state
+      .camera_transform
+      .sub_block([0, 3], [3, 4])
+      .flat();
+
+    this.shapes.skybox.draw(
+      context,
+      program_state,
+      Mat4.translation(cam_loc[0], cam_loc[1], cam_loc[2]),
+      this.materials.uv
+    );
+    context.context.clear(context.context.DEPTH_BUFFER_BIT);
 
     this.shapes.sphere.draw(
       context,
