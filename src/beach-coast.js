@@ -64,6 +64,9 @@ export class Beach_Coast extends Scene {
     // display():  Called once per frame of animation.
     // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
 
+    // this makes clear what I am calling
+    const GL = context.context;
+
     if (!context.scratchpad.controls) {
       this.children.push(
         (context.scratchpad.controls = new Walk_Movement())
@@ -92,13 +95,15 @@ export class Beach_Coast extends Scene {
       .sub_block([0, 3], [3, 4])
       .flat();
 
+    // the following box ignores the depth buffer
+    GL.disable(GL.DEPTH_TEST);
     this.shapes.skybox.draw(
       context,
       program_state,
       Mat4.translation(cam_loc[0], cam_loc[1], cam_loc[2]),
       this.materials.uv
     );
-    context.context.clear(context.context.DEPTH_BUFFER_BIT);
+    GL.enable(GL.DEPTH_TEST);
 
     this.shapes.sphere.draw(
       context,
