@@ -197,6 +197,8 @@ export class Walk_Movement extends Scene {
       look_towards = this.mouse.from_center;
     }
 
+    // desmos graph where I figured out the correct scaling for the mouse
+    // https://www.desmos.com/calculator/bcgbn3fbzh
     this.look_angle.h_angle = lerp(this.look_angle.h_angle, look_towards[0] * Math.PI * 0.5, 0.1);
     this.look_angle.v_angle = lerp(this.look_angle.v_angle, look_towards[1] * Math.PI * 0.5, 0.1);
     look_around_matrix.post_multiply(Mat4.rotation(this.look_angle.v_angle, 1, 0, 0));

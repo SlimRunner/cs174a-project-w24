@@ -1,10 +1,3 @@
-/*
-the source of the code is the following shadertoy
-https://www.shadertoy.com/view/wslfD7
-
-I have adapted this code to implement hosek-wilkie skylight model
-*/
-
 export function get_shared_skybox_model() {
 return(`#version 300 es
 
@@ -240,6 +233,11 @@ const float kHosekRadZ[] = float[](
 `);
 }
 
+/*
+I have adapted the code for this shader from a shadertoy
+with ID wslfD7
+*/
+
 export function get_vertex_skybox_model() {
 return (`
 out vec3 frag_pos;
@@ -416,6 +414,11 @@ in vec3 fragCoord;
 out vec4 fragColor;
 
 void main() {
+	// how I computed the azimuth and zenith since it differs from how it was used in the source
+	// https://www.desmos.com/3d/1551f3941d
+	// nice way to calculate spherical coordinates
+	// https://gamedev.stackexchange.com/a/87307
+
   // high noon at 0, horizon at pi/2
 	float sun_zenith = M_PI * 0.50 * 0.9;
   // starts at x moves clockwise towards z at pi/2
