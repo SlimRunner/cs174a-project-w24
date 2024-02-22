@@ -109,7 +109,7 @@ export class Beach_Coast extends Scene {
     this.shapes.sphere.draw(
       context,
       program_state,
-      model_transform.times(Mat4.translation(0, 1, 0)),
+      model_transform.times(Mat4.translation(0, 3, 0)),
       this.materials.uv
     );
 
