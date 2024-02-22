@@ -1,5 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
-import { Float3, custom_look_at, min_abs } from "./math-extended.js";
+import { Float3, custom_look_at, min_abs, lerp } from "./math-extended.js";
 
 const {
   Vector,
@@ -23,7 +23,7 @@ export class Walk_Movement extends Scene {
     this.thrust = 0;
     this.speed = 0;
     this.position = Float3.create(0, 0, 0);
-    this.torque = 0
+    this.torque = 0;
     this.angular_speed = 0;
     this.direction = 0;
     this.dir_flag = 0;
@@ -42,6 +42,14 @@ export class Walk_Movement extends Scene {
     this.fall_speed = 0;
     this.height = this.min_height;
     this.jumping_force = 700;
+
+    this.mouse = { from_center: vec(0, 0) };
+    this.mouse_enabled_canvases = new Set();
+
+    this.look_angle = {
+      h_angle: 0,
+      v_angle: 0
+    }
 
     this.consts = Object.freeze({
       cardinal_dir: Object.freeze({
@@ -77,6 +85,33 @@ export class Walk_Movement extends Scene {
     );
   }
 
+  add_mouse_controls(canvas) {
+    // add_mouse_controls():  Attach HTML mouse events to the drawing canvas.
+    // First, measure mouse steering, for rotating the flyaround camera:
+    this.mouse = { from_center: vec(0, 0) };
+    const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
+      vec(
+        2 * e.clientX / (rect.right - rect.left) - 1,
+        2 * e.clientY / (rect.bottom - rect.top) - 1
+      );
+    // Set up mouse response.  The last one stops us from reacting if the mouse leaves the canvas:
+    document.addEventListener("mouseup", (e) => {
+      this.mouse.enabled = undefined;
+      this.mouse.from_center = vec(0, 0);
+    });
+    canvas.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      this.mouse.enabled = mouse_position(e);
+    });
+    canvas.addEventListener("mousemove", (e) => {
+      e.preventDefault();
+      this.mouse.from_center = mouse_position(e);
+    });
+    canvas.addEventListener("mouseout", (e) => {
+      if (!this.mouse.enabled) this.mouse.from_center.scale_by(0);
+    });
+  }
+
   make_control_panel() {
     // make_control_panel(): Sets up a panel of interactive HTML elements, including
     // buttons with key bindings for affecting this scene, and live info readouts.
@@ -110,7 +145,9 @@ export class Walk_Movement extends Scene {
     this.key_triggered_button(
       "Jump",
       [" "],
-      () => (this.jump_thrust = this.height <= this.min_height ? this.jumping_force : 0)
+      () =>
+        (this.jump_thrust =
+          this.height <= this.min_height ? this.jumping_force : 0)
     );
     this.key_triggered_button(
       "Forward",
@@ -153,6 +190,18 @@ export class Walk_Movement extends Scene {
   }
 
   walk(state, dt) {
+    let look_around_matrix = Mat4.identity();
+
+    let look_towards = vec(0, 0);
+    if (this.mouse.enabled) {
+      look_towards = this.mouse.from_center;
+    }
+
+    this.look_angle.h_angle = lerp(this.look_angle.h_angle, look_towards[0] * Math.PI * 0.5, 0.1);
+    this.look_angle.v_angle = lerp(this.look_angle.v_angle, look_towards[1] * Math.PI * 0.5, 0.1);
+    look_around_matrix.post_multiply(Mat4.rotation(this.look_angle.v_angle, 1, 0, 0));
+    look_around_matrix.post_multiply(Mat4.rotation(this.look_angle.h_angle, 0, 1, 0));
+
     const dir = this.consts.cardinal_dir;
     const thrustforce = this.walk_force;
     const torqueforce = this.turning_force;
@@ -172,7 +221,11 @@ export class Walk_Movement extends Scene {
       this.torque += torqueforce;
     }
 
-    const heading = Vector3.create(Math.cos(this.direction), 0, Math.sin(this.direction));
+    const heading = Vector3.create(
+      Math.cos(this.direction),
+      0,
+      Math.sin(this.direction)
+    );
     const airborne = this.height > this.min_height;
 
     if (!airborne && this.jump_thrust == 0) {
@@ -180,10 +233,16 @@ export class Walk_Movement extends Scene {
     } else {
       this.fall_speed += (this.jump_thrust + this.gravity) * dt;
       this.jump_thrust = 0;
-      this.height = Math.max(this.height + this.fall_speed * dt, this.min_height);
+      this.height = Math.max(
+        this.height + this.fall_speed * dt,
+        this.min_height
+      );
     }
 
-    this.angular_speed = min_abs(this.angular_speed + this.torque * dt, this.turn_speed_limit);
+    this.angular_speed = min_abs(
+      this.angular_speed + this.torque * dt,
+      this.turn_speed_limit
+    );
     if (!(this.dir_flag & (dir.W | dir.E))) {
       this.angular_speed *= this.angular_decay_factor;
     }
@@ -196,7 +255,7 @@ export class Walk_Movement extends Scene {
     this.position.add_by(heading.times(this.speed * dt));
     this.position[1] = this.height;
 
-    state.set_camera(custom_look_at(this.position, heading, this.up_axis));
+    state.set_camera(look_around_matrix.times(custom_look_at(this.position, heading, this.up_axis)));
   }
 
   display(
@@ -207,6 +266,11 @@ export class Walk_Movement extends Scene {
     if (!this.setup_once) {
       this.reset(graphics_state);
       this.setup_once = true;
+    }
+
+    if (!this.mouse_enabled_canvases.has(context.canvas)) {
+      this.add_mouse_controls(context.canvas);
+      this.mouse_enabled_canvases.add(context.canvas);
     }
 
     this.walk(graphics_state, dt);
