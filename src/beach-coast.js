@@ -1,5 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
-import { Gouraud_Shader, UV_Shader, } from "./custom-shaders.js";
+import { Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox } from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 
@@ -41,7 +41,8 @@ export class Beach_Coast extends Scene {
       phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.8,color: color(1, 1, 1, 1)}),
       gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.4,color: color(1, 1, 1, 1)}),
       uv: new Material(new UV_Shader()),
-      matte: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0, color: color(1, 1, 1, 1)})
+      matte: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0, color: color(1, 1, 1, 1)}),
+      skybox: new Material(new Hosek_Wilkie_Skybox())
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -76,7 +77,7 @@ export class Beach_Coast extends Scene {
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
 
     program_state.projection_transform = Mat4.perspective(
-      Math.PI * 32 / 180,
+      Math.PI * 64 / 180,
       context.width / context.height,
       0.1,
       1000
@@ -101,7 +102,7 @@ export class Beach_Coast extends Scene {
       context,
       program_state,
       Mat4.translation(cam_loc[0], cam_loc[1], cam_loc[2]),
-      this.materials.uv
+      this.materials.skybox
     );
     GL.enable(GL.DEPTH_TEST);
 

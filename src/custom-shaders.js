@@ -1,11 +1,11 @@
 import { defs, tiny } from "../examples/common.js";
+import {
+  get_shared_skybox_model,
+  get_vertex_skybox_model,
+  get_fragment_skybox_model,
+} from "./hosek-wilkie-shader-strings.js";
 
-const {
-  vec4,
-  color,
-  Shader,
-  Matrix,
-} = tiny;
+const { vec4, color, Shader, Matrix } = tiny;
 
 export class Gouraud_Shader extends Shader {
   // This is a Shader using Phong_Shader as template
@@ -66,8 +66,7 @@ export class Gouraud_Shader extends Shader {
 
   vertex_glsl_code() {
     // ********* VERTEX SHADER *********
-    return (
-      `
+    return `
       ${this.shared_glsl_code()}
       attribute vec3 position, normal;                            
       // Position is expressed in object coordinates.
@@ -83,16 +82,14 @@ export class Gouraud_Shader extends Shader {
         N = normalize( mat3( model_transform ) * normal / squared_scale);
         vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
         vertex_color = phong_model_lights( normalize( N ), vertex_worldspace );
-      } `
-    );
+      } `;
   }
 
   fragment_glsl_code() {
     // ********* FRAGMENT SHADER *********
     // A fragment is a pixel that's overlapped by the current triangle.
     // Fragments affect the final image or get discarded due to depth.
-    return (
-      `
+    return `
       ${this.shared_glsl_code()}
 
       void main(){                                                           
@@ -100,8 +97,7 @@ export class Gouraud_Shader extends Shader {
         gl_FragColor = vec4( shape_color.xyz * ambient, shape_color.w );
         // Compute the final color with contributions from lights:
         gl_FragColor.xyz += vertex_color;
-      } `
-    );
+      } `;
   }
 
   send_material(gl, gpu, material) {
@@ -212,15 +208,13 @@ export class UV_Shader extends Shader {
 
   vertex_glsl_code() {
     // ********* VERTEX SHADER *********
-    return (
-      `
+    return `
       ${this.shared_glsl_code()}
       attribute vec3 position, normal;
       
       uniform mat4 projection;
       uniform mat4 view;
       uniform mat4 model;
-      uniform mat4 fulltrans;
 
       void main() {
         uvs.x = mapRange(normal.x,-1.0,1.0,0.0,1.0);
@@ -237,22 +231,19 @@ export class UV_Shader extends Shader {
       
         //determine final 3D position
         gl_Position = projection * viewModelPosition;
-      }`
-    );
+      }`;
   }
 
   fragment_glsl_code() {
     // ********* FRAGMENT SHADER *********
     // A fragment is a pixel that's overlapped by the current triangle.
     // Fragments affect the final image or get discarded due to depth.
-    return (
-      `
+    return `
       ${this.shared_glsl_code()}
       
       void main() {
         gl_FragColor = vec4(uvs, 1.0);
-      }`
-    );
+      }`;
   }
 
   send_material(gl, gpu, material) {
@@ -260,9 +251,6 @@ export class UV_Shader extends Shader {
   }
 
   send_gpu_state(gl, gpu, gpu_state, model_transform) {
-    const PCM = gpu_state.projection_transform
-      .times(gpu_state.camera_inverse)
-      .times(model_transform)
     gl.uniformMatrix4fv(
       gpu.projection,
       false,
@@ -282,7 +270,63 @@ export class UV_Shader extends Shader {
 
   update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
     const defaults = {
-      color: color(0, 0, 0, 1)
+      color: color(0, 0, 0, 1),
+    };
+    material = Object.assign({}, defaults, material);
+
+    // this.send_material(context, gpu_addresses, material);
+    this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
+  }
+}
+
+export class Hosek_Wilkie_Skybox extends Shader {
+  constructor() {
+    super();
+  }
+
+  shared_glsl_code() {
+    return get_shared_skybox_model();
+  }
+
+  vertex_glsl_code() {
+    return (
+      this.shared_glsl_code() +
+      get_vertex_skybox_model()
+    );
+  }
+
+  fragment_glsl_code() {
+    return (
+      this.shared_glsl_code() +
+      get_fragment_skybox_model()
+    );
+  }
+
+  send_material(gl, gpu, material) {
+    // here I can pass turbidity and other props and maybe time
+  }
+
+  send_gpu_state(gl, gpu, gpu_state, model_transform) {
+    gl.uniformMatrix4fv(
+      gpu.projection,
+      false,
+      Matrix.flatten_2D_to_1D(gpu_state.projection_transform.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.view,
+      false,
+      Matrix.flatten_2D_to_1D(gpu_state.camera_inverse.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.model,
+      false,
+      Matrix.flatten_2D_to_1D(model_transform.transposed())
+    );
+  }
+
+  update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+    const defaults = {
+      color: color(0, 0, 0, 1),
     };
     material = Object.assign({}, defaults, material);
 
