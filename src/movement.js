@@ -91,8 +91,8 @@ export class Walk_Movement extends Scene {
     this.mouse = { from_center: vec(0, 0) };
     const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
       vec(
-        2 * e.clientX / (rect.right - rect.left) - 1,
-        2 * e.clientY / (rect.bottom - rect.top) - 1
+        2 * (e.clientX - rect.left) / (rect.right - rect.left) - 1,
+        2 * (e.clientY - rect.top) / (rect.bottom - rect.top) - 1
       );
     // Set up mouse response.  The last one stops us from reacting if the mouse leaves the canvas:
     document.addEventListener("mouseup", (e) => {
