@@ -416,26 +416,25 @@ in vec3 fragCoord;
 out vec4 fragColor;
 
 void main() {
-	// float mouse_angle = atan(mouse.x, mouse.y);
-	// float mouse_distance = clamp(length(mouse) * M_PI, 0.0, M_PI / 2.0 - 0.1);
-
+  // high noon at 0, horizon at pi/2
 	float sun_zenith = M_PI * 0.50 * 0.9;
-	float sun_azimuth = 0.5 * M_PI * -0.5;
+  // starts at x moves clockwise towards z at pi/2
+	float sun_azimuth = M_PI * 0.0;
   
-	// float view_zenith = length(fragCoord.xy) * M_PI;
-	// float view_azimuth = sign(fragCoord.y) * acos(fragCoord.x / length(fragCoord.xy));
-  
-  vec3 test = 0.5 * (fragCoord + 1.0);
+  // same as sun zenith but for the sky
 	float view_zenith = atan(length(fragCoord.xz), max(0.0, fragCoord.y));
+  // same as sun azimuth but for the sky
 	float view_azimuth = atan(fragCoord.z, fragCoord.x);
 
+  // compute color using hosek-wilkie model in XYZ color space
 	vec3 XYZ = sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
+  // transform back to RGB
 	vec3 RGB = XYZ_to_RGB(XYZ);
-
-	vec3 col = expose(RGB, 0.1);
+  // adjust brightness gain
+	vec3 col = expose(RGB, 0.08);
 	
+  // assign final color
 	fragColor = vec4(col, 1.0);
-  // fragColor = vec4(test, 1.0);
 }
 `);
 }
