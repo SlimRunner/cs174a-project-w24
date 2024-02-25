@@ -31,13 +31,16 @@ export class Beach_Coast extends Scene {
     this.shapes = {
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
-      floor: new Square()
+      floor: new Square(),
+      //mountain: new defs.Capped_Cylinder(100, 100),
+      mountain: new defs.Subdivision_Sphere(10),
+      
     };
 
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
-      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.8,color: color(1, 1, 1, 1)}),
+      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.8,color: color(0.729, 0.09, 1,1)}),
       gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.4,color: color(1, 1, 1, 1)}),
       uv: new Material(new UV_Shader()),
       matte: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0, color: color(1, 1, 1, 1)})
@@ -92,12 +95,12 @@ export class Beach_Coast extends Scene {
       new Light(vec4(5, 3, 5, 1), color(1,1,1,1), 100),
     ];
 
-    this.shapes.sphere.draw(
+    /*this.shapes.sphere.draw(
       context,
       program_state,
       model_transform.times(Mat4.translation(0, 1, 0)),
       this.materials.uv
-    );
+    );*/
 
     this.shapes.floor.draw(
       context,
@@ -105,5 +108,20 @@ export class Beach_Coast extends Scene {
       model_transform.times(Mat4.scale(10, 1, 10)),
       this.materials.matte
     );
+
+    //model_transform=model_transform.times()
+    this.shapes.mountain.draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 2)),
+      this.materials.phong
+    );
+    this.shapes.mountain.draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 2)),
+      this.materials.phong
+    );
+    
   }
 }
