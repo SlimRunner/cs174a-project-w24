@@ -329,6 +329,7 @@ export class Hosek_Wilkie_Skybox extends Shader {
       color: color(0, 0, 0, 1),
     };
     material = Object.assign({}, defaults, material);
+    context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
 
     // this.send_material(context, gpu_addresses, material);
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);

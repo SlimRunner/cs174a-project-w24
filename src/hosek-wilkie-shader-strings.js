@@ -413,6 +413,8 @@ float atan2(in float y, in float x) {
 in vec3 fragCoord;
 out vec4 fragColor;
 
+uniform float animation_time;
+
 void main() {
 	// how I computed the azimuth and zenith since it differs from how it was used in the source
 	// https://www.desmos.com/3d/1551f3941d
@@ -420,9 +422,9 @@ void main() {
 	// https://gamedev.stackexchange.com/a/87307
 
   // high noon at 0, horizon at pi/2
-	float sun_zenith = M_PI * 0.50 * 0.9;
-  // starts at x moves clockwise towards z at pi/2
-	float sun_azimuth = M_PI * 0.0;
+	float sun_zenith = M_PI * 0.50 * (0.5 * sin(0.2 * animation_time) + 0.5);
+  // starts at x-axis moves clockwise towards z at pi/2
+	float sun_azimuth = M_PI * mod(0.2 * animation_time, 2.0);
   
   // same as sun zenith but for the sky
 	float view_zenith = atan(length(fragCoord.xz), max(0.0, fragCoord.y));
