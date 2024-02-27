@@ -134,7 +134,7 @@ export class Walk_Movement extends Scene {
       }
     });
     canvas.addEventListener("mouseout", (e) => {
-      this.mouse.from_center.scale_by(0);
+      this.mouse.from_center[1] = 0;
     });
 
     // capture mouse to element
@@ -143,12 +143,15 @@ export class Walk_Movement extends Scene {
       canvas.requestPointerLock({
         unadjustedMovement: true,
       });
+      canvas.style.cursor = "none";
     });
 
     // exit pointer lock (browsers usually implement this)
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         document.exitPointerLock();
+        this.mouse.from_center[1] = 0;
+        canvas.style.cursor = null;
       }
     });
   }
@@ -301,7 +304,7 @@ export class Walk_Movement extends Scene {
     if (!(this.dir_flag & (dir.ALL)) && !airborne) {
       this.speed *= this.speed_decay_factor;
     }
-    
+
     this.position.add_by(this.momentum_vector.times(this.speed * dt));
     this.position[1] = this.height;
 

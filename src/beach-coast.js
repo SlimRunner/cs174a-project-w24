@@ -87,7 +87,7 @@ export class Beach_Coast extends Scene {
       this.children.push(
         (context.scratchpad.controls = new Walk_Movement())
       );
-      context.canvas.style.cursor = "none";
+      // context.canvas.style.cursor = "none";
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
