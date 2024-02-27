@@ -1,5 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
-import { Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox } from "./custom-shaders.js";
+import { Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox, Crosshair_Shader } from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 
@@ -32,7 +32,8 @@ export class Beach_Coast extends Scene {
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
       floor: new Square(),
-      skybox: new defs.Cube()
+      skybox: new defs.Cube(),
+      gui_box: new defs.Square(),
     };
 
     // *** Materials
@@ -42,7 +43,8 @@ export class Beach_Coast extends Scene {
       gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.4,color: color(1, 1, 1, 1)}),
       uv: new Material(new UV_Shader()),
       matte: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0, color: color(1, 1, 1, 1)}),
-      skybox: new Material(new Hosek_Wilkie_Skybox())
+      skybox: new Material(new Hosek_Wilkie_Skybox()),
+      ui_crosshair: new Material(new Crosshair_Shader()),
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -65,13 +67,27 @@ export class Beach_Coast extends Scene {
     // display():  Called once per frame of animation.
     // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
 
+    /*
+    context has the following properties:
+    context.context: WebGLRenderingContext
+    context.canvas: HTMLCanvasElement
+    context.width: number
+    context.height: number
+    context.time: number
+    context.program_state: camera, and animation properties
+    context.scratchpad: {controls: Walk_Movement}
+    context.scenes: {beach_coast: Beach_Coast}
+    */
+
     // this makes clear what I am calling
     const GL = context.context;
 
     if (!context.scratchpad.controls) {
+      // Add a movement controls panel to the page:
       this.children.push(
         (context.scratchpad.controls = new Walk_Movement())
       );
+      context.canvas.style.cursor = "none";
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
@@ -116,8 +132,15 @@ export class Beach_Coast extends Scene {
     this.shapes.floor.draw(
       context,
       program_state,
-      model_transform.times(Mat4.scale(10, 1, 10)),
+      model_transform.times(Mat4.translation(0, 1, 0)).times(Mat4.scale(10, 1, 10)),
       this.materials.matte
+    );
+    
+    this.shapes.gui_box.draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.scale(10, 1, 10)),
+      this.materials.ui_crosshair
     );
   }
 }

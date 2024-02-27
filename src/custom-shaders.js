@@ -335,3 +335,120 @@ export class Hosek_Wilkie_Skybox extends Shader {
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
+
+export class Crosshair_Shader extends Shader {
+  constructor() {
+    super();
+  }
+
+  shared_glsl_code() {
+    return `
+      precision mediump float;
+      // varying vec2 uv;
+    `;
+  }
+
+  vertex_glsl_code() {
+    return `
+      ${this.shared_glsl_code()}
+
+      attribute vec2 texture_coord;
+      attribute vec3 position;
+
+      void main() {
+        // uv = texture_coord;
+        gl_Position = vec4(position.xy, 0.0, 1.0);
+      }
+    `;
+  }
+
+  fragment_glsl_code() {
+    return `
+      ${this.shared_glsl_code()}
+
+      uniform vec2 resolution;
+
+      float cross_hair(vec2 pos, float thickness, float length) {
+        float ratio_yx = resolution.y / resolution.x;
+        float stroke_width = thickness / resolution.x;
+        float radius = stroke_width * 0.5;
+        vec2 pos2 = abs(pos - 0.5);
+        float length_ratio = thickness / length;
+        return min(
+          max(
+            pos2.x,
+            length_ratio * ratio_yx * pos2.y
+          ) - radius,
+          max(
+            length_ratio * pos2.x,
+            ratio_yx * pos2.y
+          ) - radius
+        );
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy - 0.5) / resolution;
+        // float ratio = resolution.x / resolution.y;
+        // float thickness = 0.08; // Adjust the thickness of the crosshair lines
+        // float length = 0.1; // Adjust the length of the crosshair lines
+    
+        // // Horizontal line
+        // float horzLine = step(uv.y, 0.5 + thickness * 0.5) - step(uv.y, 0.5 - thickness * 0.5);
+        // // Vertical line
+        // float vertLine = step(uv.x, 0.5 + thickness * 0.5) - step(uv.x, 0.5 - thickness * 0.5);
+    
+        // // Apply length adjustment to the lines
+        // horzLine *= step(uv.x, 0.5 + length * 0.5) * step(0.5 - length * 0.5, uv.x);
+        // vertLine *= step(uv.y, 0.5 + length * 0.5) * step(0.5 - length * 0.5, uv.y);
+    
+        // // Combine the lines
+        // vec3 color = vec3(1.0); // Set crosshair color to white
+        // vec3 crosshair = mix(color, vec3(0.0), horzLine * vertLine);
+        
+        // gl_FragColor = vec4(vec2(uv.xy),0.0,1.0  );
+        // gl_FragColor = vec4(crosshair, 1.0);
+        float cross_threshold = cross_hair(uv, 2.0, 10.0);
+        if (cross_hair(uv, 2.0, 20.0) <= 0.0) {
+          gl_FragColor = vec4(vec3(1.0), 0.75);
+        } else if (cross_hair(uv, 4.0, 22.0) <= 0.0) {
+          gl_FragColor = vec4(vec3(0.0), 0.75);
+        } else {
+          discard;
+        }
+      }
+    `;
+  }
+
+  send_material(gl, gpu, material) {
+    // nothing to do
+  }
+
+  send_gpu_state(gl, gpu, gpu_state, model_transform) {
+    gl.uniformMatrix4fv(
+      gpu.projection,
+      false,
+      Matrix.flatten_2D_to_1D(gpu_state.projection_transform.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.view,
+      false,
+      Matrix.flatten_2D_to_1D(gpu_state.camera_inverse.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.model,
+      false,
+      Matrix.flatten_2D_to_1D(model_transform.transposed()));
+  }
+
+  update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+    const defaults = {
+      color: color(0, 0, 0, 1),
+    };
+    material = Object.assign({}, defaults, material);
+    context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
+    context.uniform2fv(gpu_addresses.resolution, [context.canvas.width, context.canvas.height]);
+
+    // this.send_material(context, gpu_addresses, material);
+    this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
+  }
+}

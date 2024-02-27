@@ -41,9 +41,9 @@ export class Walk_Movement extends Scene {
     this.jump_thrust = 0;
     this.fall_speed = 0;
     this.height = this.min_height;
-    this.jumping_force = 700;
+    this.jumping_force = 1000;
 
-    this.mouse = { from_center: vec(0, 0) };
+    this.mouse = { from_center: vec(0, 0), enabled: true};
     this.mouse_enabled_canvases = new Set();
 
     this.look_angle = {
@@ -88,7 +88,6 @@ export class Walk_Movement extends Scene {
   add_mouse_controls(canvas) {
     // add_mouse_controls():  Attach HTML mouse events to the drawing canvas.
     // First, measure mouse steering, for rotating the flyaround camera:
-    this.mouse = { from_center: vec(0, 0) };
     const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
       vec(
         2 * (e.clientX - rect.left) / (rect.right - rect.left) - 1,
@@ -96,19 +95,18 @@ export class Walk_Movement extends Scene {
       );
     // Set up mouse response.  The last one stops us from reacting if the mouse leaves the canvas:
     document.addEventListener("mouseup", (e) => {
-      this.mouse.enabled = undefined;
-      this.mouse.from_center = vec(0, 0);
+      this.mouse.enabled = true;
     });
     canvas.addEventListener("mousedown", (e) => {
       e.preventDefault();
-      this.mouse.enabled = mouse_position(e);
+      this.mouse.from_center = mouse_position(e);
     });
     canvas.addEventListener("mousemove", (e) => {
       e.preventDefault();
       this.mouse.from_center = mouse_position(e);
     });
     canvas.addEventListener("mouseout", (e) => {
-      if (!this.mouse.enabled) this.mouse.from_center.scale_by(0);
+      this.mouse.from_center.scale_by(0);
     });
   }
 
