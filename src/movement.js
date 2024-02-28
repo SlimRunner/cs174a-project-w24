@@ -135,6 +135,7 @@ export class Walk_Movement extends Scene {
     });
     canvas.addEventListener("mouseout", (e) => {
       this.mouse.from_center[1] = 0;
+      canvas.style.cursor = null;
     });
 
     // capture mouse to element

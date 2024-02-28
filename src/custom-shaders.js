@@ -203,7 +203,7 @@ export class UV_Shader extends Shader {
       float mapRange(float value, float minValue, float maxValue, float newMinValue, float newMaxValue) {
         return mix(newMinValue, newMaxValue, (value - minValue) / (maxValue - minValue));
       }
-      `;
+    `;
   }
 
   vertex_glsl_code() {
@@ -231,7 +231,8 @@ export class UV_Shader extends Shader {
       
         //determine final 3D position
         gl_Position = projection * viewModelPosition;
-      }`;
+      }
+    `;
   }
 
   fragment_glsl_code() {
@@ -243,7 +244,8 @@ export class UV_Shader extends Shader {
       
       void main() {
         gl_FragColor = vec4(uvs, 1.0);
-      }`;
+      }
+    `;
   }
 
   send_material(gl, gpu, material) {
