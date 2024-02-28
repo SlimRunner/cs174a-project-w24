@@ -296,7 +296,7 @@ export class Ripple_Shader extends Shader {
     constructor(){
         super();
     }
-  
+
     shared_glsl_code() {
         // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
         return `
@@ -307,6 +307,7 @@ export class Ripple_Shader extends Shader {
         uniform float wave_period;
         uniform vec4 shape_color;
         uniform float time;
+        uniform float birth;
         `;
     }
 
@@ -330,11 +331,26 @@ export class Ripple_Shader extends Shader {
         // TODO:  Complete the main function of the fragment shader (Extra Credit Part II).
         return this.shared_glsl_code() + `
         void main(){
+          float relativeTime = 1.0*(time-birth+0.25);
           float dist = distance(point_position.xyz, center.xyz);
-          float decay = 1.0 / pow(10.0, (1.0/time));
-          float scale = wave_size * pow(decay, dist) / time;
-          float sinusoid = sin((wave_period * (dist - time/2.0))/time);
-          gl_FragColor = scale * sinusoid * shape_color;
+          float decay = 1.0 / pow(10.0, (1.0/relativeTime));
+          float scale = wave_size * pow(decay, dist) / relativeTime;
+          float sinusoid = sin((wave_period * (dist - relativeTime/2.0))/relativeTime);
+          vec4 intensity = scale * sinusoid * shape_color;
+          intensity.w = scale * (sinusoid+1.0) / 2.0;
+          if (dist > 1.4)
+          {
+            intensity.w = intensity.w / dist;
+          }
+          else
+          {
+            intensity.w = intensity.w / 1.4;
+          }
+          if (relativeTime > 1.0)
+          {
+            intensity.w = intensity.w / relativeTime;
+          }
+          gl_FragColor = intensity;
         }`;
     }
   
@@ -342,10 +358,11 @@ export class Ripple_Shader extends Shader {
       gl.uniform4fv(gpu.shape_color, material.color);
       gl.uniform1f(gpu.wave_size, material.size);
       gl.uniform1f(gpu.wave_period, material.period);
+      gl.uniform1f(gpu.birth, material.birth);
     }
   
     send_gpu_state(gl, gpu, gpu_state, model_transform) {
-      gl.uniform1f(gpu.time, 1.5*(gpu_state.animation_time)/1000.0)
+      gl.uniform1f(gpu.time, (gpu_state.animation_time)/1000.0)
     }
       
     update_GPU(context, gpu_addresses, graphics_state, model_transform, material) {

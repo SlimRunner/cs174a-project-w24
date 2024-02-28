@@ -36,10 +36,10 @@ export class Beach_Coast extends Scene {
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
-      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: hex_color("#B08040")}),
+      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: hex_color("#00FFFF")}),
       gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: hex_color("#B08040")}),
       uv: new Material(new UV_Shader()),
-      ripple: new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0}),
+      ripple: new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0, birth: 0.0}),
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -47,6 +47,10 @@ export class Beach_Coast extends Scene {
       vec3(0, 0, 0),
       vec3(0, 1, 0)
     );
+
+    this.addRippleButton = false;
+    this.ripplesBirth = [];
+    this.rippleShaders = [];
   }
 
   make_control_panel() {
@@ -56,8 +60,44 @@ export class Beach_Coast extends Scene {
     //   ["Meta", "key"],
     //   callback
     // );
+    this.key_triggered_button("Add Ripple", ["Shift", "R"], () => this.addRippleButton = true);
+    this.new_line();
   }
 
+  cleanRipples(time){
+    if (this.ripplesBirth.length === 0){
+      return;
+    }
+    let notClean = true;
+    while (notClean && this.ripplesBirth.length > 0){
+      if ((this.ripplesBirth[0] + 3.0) < time){
+        this.ripplesBirth.shift();
+        this.rippleShaders.shift();
+      }
+      else{
+        notClean = false;
+      }
+    }
+  }
+
+  addRipple(time){
+    this.ripplesBirth.push(time);
+    this.rippleShaders.push(new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0, birth: time}));
+    console.log(this.ripplesBirth);
+  }
+
+  displayRipples(context, program_state){
+    for (let i = 0; i < this.rippleShaders.length; i++) {
+      let model_transform = Mat4.scale(4, 1, 4);
+      this.shapes.square.draw(
+        context,
+        program_state,
+        model_transform,
+        this.rippleShaders[i]
+      );  
+    }
+  }
+  
   display(context, program_state) {
     // display():  Called once per frame of animation.
     // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
@@ -84,18 +124,21 @@ export class Beach_Coast extends Scene {
       new Light(vec4(2, -2, 2, 1), color(1,1,1,1), 100),
     ];
 
-    let model_transform = Mat4.scale(4, 1, 4);
+
+    let model_transform = Mat4.scale(8, 1, 8);
+    
     this.shapes.square.draw(
       context,
       program_state,
       model_transform,
-      this.materials.ripple
+      this.materials.phong
     );
-    this.shapes.square.draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(1, 0, 0)),
-      this.materials.ripple
-    );
+
+    if (this.addRippleButton){
+      this.addRipple(t);
+      this.addRippleButton = false;
+    }
+    this.displayRipples(context, program_state)
+    this.cleanRipples(t);
   }
 }
