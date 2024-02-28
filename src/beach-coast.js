@@ -2,6 +2,7 @@ import { defs, tiny } from "../examples/common.js";
 import { Phong_Shader_2, Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox, Crosshair_Shader } from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
+import { Shape_From_File } from "../examples/obj-file-demo.js";
 
 const {
   Vector,
@@ -34,6 +35,7 @@ export class Beach_Coast extends Scene {
       floor: new Square(),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),
+      mountain: new Shape_From_File("objects/mountain.obj"),
     };
 
     // *** Materials
@@ -104,7 +106,7 @@ export class Beach_Coast extends Scene {
 
     // The parameters of the Light are: position, color, size
     program_state.lights = [
-      new Light(vec4(-5, 3, -5, 1), color(1,1,1,1), 100),
+      new Light(vec4(-5, 300, -5, 1), color(1,1,1,1), 10000),
       new Light(vec4(5, 3, 5, 1), color(1,1,1,1), 100),
     ];
 
@@ -123,6 +125,13 @@ export class Beach_Coast extends Scene {
     );
     GL.enable(GL.DEPTH_TEST);
 
+    this.shapes.mountain.draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
+      this.materials.phong2
+    );
+
     this.shapes.sphere.draw(
       context,
       program_state,
@@ -133,7 +142,7 @@ export class Beach_Coast extends Scene {
     this.shapes.floor.draw(
       context,
       program_state,
-      model_transform.times(Mat4.translation(0, 1, 0)).times(Mat4.scale(100, 1, 100)),
+      model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
       this.materials.phong2
     );
     
