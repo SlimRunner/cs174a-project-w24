@@ -1,5 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
-import { Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox, Crosshair_Shader } from "./custom-shaders.js";
+import { Phong_Shader_2, Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox, Crosshair_Shader } from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 
@@ -39,7 +39,8 @@ export class Beach_Coast extends Scene {
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
-      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.8,color: color(1, 1, 1, 1)}),
+      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1, 1, 1, 1)}),
+      phong2: new Material(new Phong_Shader_2(), {ambient: 0.6, diffusivity: 1, specularity: 0,color: color(1, 1, 1, 1), ambient_color: hex_color("#d8e8ff")}),
       gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.4,color: color(1, 1, 1, 1)}),
       uv: new Material(new UV_Shader()),
       matte: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0, color: color(1, 1, 1, 1)}),
@@ -132,8 +133,8 @@ export class Beach_Coast extends Scene {
     this.shapes.floor.draw(
       context,
       program_state,
-      model_transform.times(Mat4.translation(0, 1, 0)).times(Mat4.scale(10, 1, 10)),
-      this.materials.matte
+      model_transform.times(Mat4.translation(0, 1, 0)).times(Mat4.scale(100, 1, 100)),
+      this.materials.phong2
     );
     
     this.shapes.gui_box.draw(
