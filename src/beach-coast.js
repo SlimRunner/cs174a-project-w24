@@ -33,6 +33,7 @@ export class Beach_Coast extends Scene {
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
       floor: new Square(),
+      water_surface: new Square(),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),
       mountain: new Shape_From_File("objects/mountain.obj"),
@@ -97,8 +98,8 @@ export class Beach_Coast extends Scene {
 
   displayRipples(context, program_state){
     for (let i = 0; i < this.rippleShaders.length; i++) {
-      let model_transform = Mat4.scale(4, 1, 4);
-      this.shapes.square.draw(
+      let model_transform = Mat4.translation(0, 0.02, 0).times(Mat4.scale(4, 1, 4));
+      this.shapes.water_surface.draw(
         context,
         program_state,
         model_transform,
@@ -144,6 +145,8 @@ export class Beach_Coast extends Scene {
     );
 
     let model_transform = Mat4.identity();
+
+    const ripple_transform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(8, 1, 8));
 
     // The parameters of the Light are: position, color, size
     program_state.lights = [
@@ -194,11 +197,11 @@ export class Beach_Coast extends Scene {
       this.materials.phong2
     );
     
-    this.shapes.square.draw(
+    this.shapes.water_surface.draw(
       context,
       program_state,
-      model_transform.times(Mat4.scale(8, 1, 8)),
-      this.materials.phong.override("#00FFFF")
+      ripple_transform,
+      this.materials.phong.override(hex_color("#00FFFF"))
     );
 
     if (this.addRippleButton){
