@@ -24,7 +24,7 @@ const {
 
 const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version();
 
-export class Beach_Coast extends Scene {
+export class Ripple_Overdrive extends Scene {
   constructor() {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
@@ -126,7 +126,7 @@ export class Beach_Coast extends Scene {
     context.time: number
     context.program_state: camera, and animation properties
     context.scratchpad: {controls: Walk_Movement}
-    context.scenes: {beach_coast: Beach_Coast}
+    context.scenes: {ripple_Overdrive: Ripple_Overdrive}
     */
 
     // this makes clear what I am calling
