@@ -7,7 +7,7 @@ import {Scene_To_Texture_Demo} from "./examples/scene-to-texture-demo.js"
 import {Surfaces_Demo} from "./examples/surfaces-demo.js"
 import {Text_Demo} from "./examples/text-demo.js"
 import {Transforms_Sandbox} from "./examples/transforms-sandbox.js"
-import {Beach_Coast} from "./src/beach-coast.js";
+import {Ripple_Overdrive} from "./src/ripple-overdrive.js";
 
 // Pull these names into this module's scope for convenience:
 const {
@@ -34,14 +34,14 @@ Object.assign(defs,
     {Surfaces_Demo},
     {Text_Demo},
     {Transforms_Sandbox},
-    {Beach_Coast}
+    {Ripple_Overdrive}
 );
 
 // ******************** End extra step
 
 // (Can define Main_Scene's class here)
 
-const Main_Scene = Beach_Coast;
+const Main_Scene = Ripple_Overdrive;
 const Additional_Scenes = [];
 
 export {Main_Scene, Additional_Scenes, Canvas_Widget, Code_Widget, Text_Widget, defs}
