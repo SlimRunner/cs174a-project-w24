@@ -10,7 +10,7 @@
         "command": ".\\host.bat"
       },
       "linux": {
-        "command": "./host.command"
+        "command": "./host.sh"
       },
       "osx": {
         "command": "./host.command"

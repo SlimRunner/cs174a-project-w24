@@ -10,6 +10,10 @@ const {
   Mat4,
 } = tiny;
 
+export function lerp(x, y, t) {
+  return (1 - t) * x + t * y;
+}
+
 export class Float3 extends Vector3 {
   static create(x, y, z) {
     const v = new Float3(3);

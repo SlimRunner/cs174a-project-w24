@@ -956,6 +956,7 @@ const Shape = tiny.Shape =
             } else
                 this.arrays.position = p_arr.map(p => p.times(1 / average_lengths.norm()));
         }
+        
     }
 
 
@@ -1294,7 +1295,8 @@ const Webgl_Manager = tiny.Webgl_Manager =
             };
             Object.assign(this, members);
             // Get the GPU ready, creating a new WebGL context for this canvas:
-            for (let name of ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"]) {
+            for (let name of ["webgl2", "experimental-webgl", "webkit-3d", "moz-webgl"]) {
+                console.log(`using ${name}`);
                 this.context = this.canvas.getContext(name);
                 if (this.context) break;
             }
