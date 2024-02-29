@@ -275,7 +275,7 @@ export class Walk_Movement extends Scene {
     const walk_vector = this.map_cardinal_to_vec(this.dir_flag);
 
     if (walk_vector !== null) {
-      this.thrust = thrustforce;
+      this.thrust = airborne? 0 : thrustforce;
     }
 
     if (!airborne) {
