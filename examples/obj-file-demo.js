@@ -8,7 +8,6 @@ export class Shape_From_File extends Shape {                                   /
         super("position", "normal", "texture_coord");
         // Begin downloading the mesh. Once that completes, return
         // control to our parse_into_mesh function.
-        this.ready = false;
         this.load_file(filename);
     }
 
@@ -17,14 +16,16 @@ export class Shape_From_File extends Shape {                                   /
         return fetch(filename)
             .then(response => {
                 if (response.ok) {
-                    this.ready = true;
+                    console.log("File loaded successfully.");
                     return Promise.resolve(response.text());
                 } else {
+                    console.log("File loaded with errors.");
                     return Promise.reject(response.status)
                 }
             })
             .then(obj_file_contents => this.parse_into_mesh(obj_file_contents))
             .catch(error => {
+                console.log("File did not load.");
                 this.copy_onto_graphics_card(this.gl);
             })
     }
