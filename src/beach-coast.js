@@ -107,7 +107,7 @@ export class Beach_Coast extends Scene {
     // The parameters of the Light are: position, color, size
     program_state.lights = [
       new Light(vec4(-5, 300, -5, 1), color(1,1,1,1), 10000),
-      new Light(vec4(5, 3, 5, 1), color(1,1,1,1), 100),
+      new Light(vec4(5, 6, 5, 1), color(1,1,1,1), 20),
     ];
 
     const cam_loc = program_state
