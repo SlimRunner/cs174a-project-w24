@@ -175,13 +175,15 @@ export class Beach_Coast extends Scene {
     
     // =========================================================
     // Main scene is rendered here
-
-    this.shapes.mountain.draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      this.materials.phong2
-    );
+    
+    if (this.shapes.mountain.ready) {
+      this.shapes.mountain.draw(
+        context,
+        program_state,
+        model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
+        this.materials.phong2
+      );
+    }
 
     this.shapes.sphere.draw(
       context,
