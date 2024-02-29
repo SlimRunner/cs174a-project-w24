@@ -3,6 +3,7 @@ import { Phong_Shader_2, Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox, Crossha
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
+import { draw_if_ready } from "./utilities.js";
 
 const {
   Vector,
@@ -36,7 +37,11 @@ export class Beach_Coast extends Scene {
       water_surface: new Square(),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),
-      mountain: new Shape_From_File("objects/mountain.obj"),
+      mountains: [
+        new Shape_From_File("objects/mountain.obj"),
+        new Shape_From_File("objects/01-mountain.obj"),
+        new Shape_From_File("objects/02-mountain.obj"),
+      ],
     };
 
     // *** Materials
@@ -176,26 +181,24 @@ export class Beach_Coast extends Scene {
     // =========================================================
     // Main scene is rendered here
     
-    if (this.shapes.mountain.ready) {
-      this.shapes.mountain.draw(
-        context,
-        program_state,
-        model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-        this.materials.phong2
-      );
-      this.shapes.mountain.draw(
-        context,
-        program_state,
-        model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 2)),
-        this.materials.phong.override(color(0.729, 0.09, 1,1))
-      );
-      this.shapes.mountain.draw(
-        context,
-        program_state,
-        model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 2)),
-        this.materials.phong.override(color(0.729, 0.09, 1,1))
-      );
-    }
+    this.shapes.mountains[0].draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
+      this.materials.phong2
+    );
+    this.shapes.mountains[1].draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 6)),
+      this.materials.phong.override(color(0.6, 0.4, 0.35, 1.0))
+    );
+    this.shapes.mountains[2].draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 6)),
+      this.materials.phong.override(color(0.6, 0.4, 0.35, 1.0))
+    );
 
     this.shapes.sphere.draw(
       context,
