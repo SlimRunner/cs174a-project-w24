@@ -636,3 +636,89 @@ export class Crosshair_Shader extends Shader {
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
+
+export class Ripple_Shader extends Shader {
+
+    constructor(){
+        super();
+    }
+
+    shared_glsl_code() {
+        // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+        return `
+        precision mediump float;
+        varying vec4 point_position;
+        varying vec4 center;
+        uniform float wave_size;
+        uniform float wave_period;
+        uniform vec4 shape_color;
+        uniform float time;
+        uniform float birth;
+        `;
+    }
+
+    vertex_glsl_code() {
+        // ********* VERTEX SHADER *********
+        // TODO:  Complete the main function of the vertex shader (Extra Credit Part II).
+        return this.shared_glsl_code() + `
+        attribute vec3 position;
+        uniform mat4 model_transform;
+        uniform mat4 projection_camera_model_transform;
+        
+        void main(){
+          center = model_transform * vec4(0.0, 0.0, 0.0, 1.0);
+          point_position = model_transform * vec4(position, 1.0);
+          gl_Position = projection_camera_model_transform * vec4(position, 1.0);        
+        }`;
+    }
+
+    fragment_glsl_code() {
+        // ********* FRAGMENT SHADER *********
+        // TODO:  Complete the main function of the fragment shader (Extra Credit Part II).
+        return this.shared_glsl_code() + `
+        void main(){
+          float relativeTime = 1.0*(time-birth+0.25);
+          float dist = distance(point_position.xyz, center.xyz);
+          float decay = 1.0 / pow(10.0, (1.0/relativeTime));
+          float scale = wave_size * pow(decay, dist) / relativeTime;
+          float sinusoid = sin((wave_period * (dist - relativeTime/2.0))/relativeTime);
+          vec4 intensity = scale * sinusoid * shape_color;
+          intensity.w = scale * (sinusoid+1.0) / 2.0;
+          if (dist > 1.4)
+          {
+            intensity.w = intensity.w / dist;
+          }
+          else
+          {
+            intensity.w = intensity.w / 1.4;
+          }
+          if (relativeTime > 1.0)
+          {
+            intensity.w = intensity.w / relativeTime;
+          }
+          gl_FragColor = intensity;
+        }`;
+    }
+  
+    send_material(gl, gpu, material) {
+      gl.uniform4fv(gpu.shape_color, material.color);
+      gl.uniform1f(gpu.wave_size, material.size);
+      gl.uniform1f(gpu.wave_period, material.period);
+      gl.uniform1f(gpu.birth, material.birth);
+    }
+  
+    send_gpu_state(gl, gpu, gpu_state, model_transform) {
+      gl.uniform1f(gpu.time, (gpu_state.animation_time)/1000.0)
+    }
+      
+    update_GPU(context, gpu_addresses, graphics_state, model_transform, material) {
+        // update_GPU():  Defining how to synchronize our JavaScript's variables to the GPU's:
+        const [P, C, M] = [graphics_state.projection_transform, graphics_state.camera_inverse, model_transform],
+            PCM = P.times(C).times(M);
+        context.uniformMatrix4fv(gpu_addresses.model_transform, false, Matrix.flatten_2D_to_1D(model_transform.transposed()));
+        context.uniformMatrix4fv(gpu_addresses.projection_camera_model_transform, false,
+            Matrix.flatten_2D_to_1D(PCM.transposed()));
+        this.send_material(context, gpu_addresses, material);
+        this.send_gpu_state(context, gpu_addresses, graphics_state, model_transform);
+    }
+}

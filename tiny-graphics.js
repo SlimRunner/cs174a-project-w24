@@ -956,6 +956,7 @@ const Shape = tiny.Shape =
             } else
                 this.arrays.position = p_arr.map(p => p.times(1 / average_lengths.norm()));
         }
+        
     }
 
 
