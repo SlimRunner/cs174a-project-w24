@@ -833,7 +833,7 @@ export class Complex_Textured extends Shader {
         vec3 N_bumped = normalize( N + (bump_color.rbg - 0.5) * 1.0 );
 
         // Compute an initial (ambient) color:
-        gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
+        gl_FragColor = vec4( shape_color.xyz * ambient, shape_color.w * tex_color.w ); 
         
         // Compute the final color with contributions from lights:
         gl_FragColor.xyz += phong_model_lights(
