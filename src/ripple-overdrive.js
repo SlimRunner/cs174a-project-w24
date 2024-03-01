@@ -1,5 +1,13 @@
 import { defs, tiny } from "../examples/common.js";
-import { Phong_Shader_2, Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox, Crosshair_Shader, Ripple_Shader } from "./custom-shaders.js";
+import {
+  Phong_Shader_2,
+  Gouraud_Shader,
+  UV_Shader,
+  Hosek_Wilkie_Skybox,
+  Crosshair_Shader,
+  Ripple_Shader,
+  Complex_Textured,
+} from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
@@ -20,6 +28,7 @@ const {
   Shape,
   Material,
   Scene,
+  Texture,
 } = tiny;
 
 const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version();
@@ -33,7 +42,8 @@ export class Ripple_Overdrive extends Scene {
     this.shapes = {
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
-      floor: new Square(),
+      large_floor: new Square(),
+      small_square: new Square(),
       water_surface: new Square(),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),
@@ -43,18 +53,91 @@ export class Ripple_Overdrive extends Scene {
         new Shape_From_File("objects/02-mountain.obj"),
       ],
     };
+    this.shapes.large_floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
+    this.shapes.small_square.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(4)));
 
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
-      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1, 1, 1, 1)}),
-      phong2: new Material(new Phong_Shader_2(), {ambient: 0.6, diffusivity: 1, specularity: 0,color: color(1, 1, 1, 1), ambient_color: hex_color("#d8e8ff")}),
-      gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.4,color: color(1, 1, 1, 1)}),
+      matte: new Material(new defs.Phong_Shader(), {
+        ambient: 0,
+        diffusivity: 1,
+        specularity: 0,
+        color: color(1, 1, 1, 1),
+      }),
+      plastic: new Material(new defs.Phong_Shader(), {
+        ambient: 0,
+        diffusivity: 2,
+        specularity: 3,
+        color: color(1, 1, 1, 1),
+      }),
+      ambient_phong: new Material(new Phong_Shader_2(), {
+        ambient: 0.6,
+        diffusivity: 1,
+        specularity: 0,
+        color: color(1, 1, 1, 1),
+        ambient_color: hex_color("#d8e8ff"),
+      }),
+      gouraud: new Material(new Gouraud_Shader(), {
+        ambient: 0,
+        diffusivity: 1,
+        specularity: 0.4,
+        color: color(1, 1, 1, 1),
+      }),
       uv: new Material(new UV_Shader()),
-      matte: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0, color: color(1, 1, 1, 1)}),
+      matte: new Material(new defs.Phong_Shader(), {
+        ambient: 0,
+        diffusivity: 1,
+        specularity: 0,
+        color: color(1, 1, 1, 1),
+      }),
       skybox: new Material(new Hosek_Wilkie_Skybox()),
       ui_crosshair: new Material(new Crosshair_Shader()),
-      ripple: new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0, birth: 0.0}),
+      ripple: new Material(new Ripple_Shader(), {
+        color: hex_color("#ADD8E6"),
+        size: 2.0,
+        period: 10.0,
+        birth: 0.0,
+      }),
+      grass_mat: new Material(new Complex_Textured(), {
+        color: color(0, 0, 0, 1),
+        ambient: 0.2,
+        diffusivity: 4,
+        specularity: 2,
+        texture: new Texture(
+          "textures/tiled-grass-texture.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+        spec_map: new Texture(
+          "textures/tiled-grass-texture.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+        bump_map: new Texture(
+          "textures/tiled-grass-bump.png",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+      }),
+      stone_mat: new Material(new Complex_Textured(), {
+        color: color(0, 0, 0, 1),
+        ambient: 0.2,
+        diffusivity: 4,
+        specularity: 3,
+        texture: new Texture(
+          // "textures/tiled-grass-texture.jpg",
+          "textures/color_map.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+        spec_map: new Texture(
+          // "textures/tiled-grass-texture.jpg",
+          "textures/spec_map.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+        bump_map: new Texture(
+          // "textures/tiled-grass-bump.png",
+          "textures/normal_map.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+      }),
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -185,19 +268,19 @@ export class Ripple_Overdrive extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      this.materials.phong2
+      this.materials.ambient_phong
     );
     this.shapes.mountains[1].draw(
       context,
       program_state,
       model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 6)),
-      this.materials.phong.override(color(0.6, 0.4, 0.35, 1.0))
+      this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
     );
     this.shapes.mountains[2].draw(
       context,
       program_state,
       model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 6)),
-      this.materials.phong.override(color(0.6, 0.4, 0.35, 1.0))
+      this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
     );
 
     this.shapes.sphere.draw(
@@ -207,18 +290,28 @@ export class Ripple_Overdrive extends Scene {
       this.materials.uv
     );
 
-    this.shapes.floor.draw(
+    this.shapes.large_floor.draw(
       context,
       program_state,
       model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
-      this.materials.phong2
+      this.materials.grass_mat
+    );
+
+    this.shapes.small_square.draw(
+      context,
+      program_state,
+      model_transform
+        .times(Mat4.translation(16, 0.01, 0))
+        .times(Mat4.scale(-8, 0.01, 8))
+        ,
+      this.materials.stone_mat
     );
     
     this.shapes.water_surface.draw(
       context,
       program_state,
       ripple_transform,
-      this.materials.phong.override(hex_color("#00FFFF"))
+      this.materials.matte.override(hex_color("#00FFFF"))
     );
 
     if (this.addRippleButton){
