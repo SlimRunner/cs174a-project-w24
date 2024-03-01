@@ -722,3 +722,208 @@ export class Ripple_Shader extends Shader {
         this.send_gpu_state(context, gpu_addresses, graphics_state, model_transform);
     }
 }
+
+export class Complex_Textured extends Shader {
+  // **Textured_Phong** is a Phong Shader extended to addditionally decal a
+  // texture image over the drawn shape, lined up according to the texture
+  // coordinates that are stored at each shape vertex.
+
+  constructor(num_lights = 2) {
+    super();
+    console.log(this.num_lights);
+    this.num_lights = num_lights;
+  }
+
+  shared_glsl_code() {
+    // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+    return `
+      precision mediump float;
+      const int N_LIGHTS = ${this.num_lights};
+      uniform float ambient, diffusivity, specularity, smoothness;
+      uniform vec4 light_positions_or_vectors[N_LIGHTS], light_colors[N_LIGHTS];
+      uniform float light_attenuation_factors[N_LIGHTS];
+      uniform vec4 shape_color;
+      uniform vec3 squared_scale, camera_center;
+
+      // Specifier "varying" means a variable's final value will be passed from the vertex shader
+      // on to the next phase (fragment shader), then interpolated per-fragment, weighted by the
+      // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
+      varying vec3 N, vertex_worldspace;
+      
+      // ***** PHONG SHADING HAPPENS HERE: *****                                       
+      vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace, vec3 diffuse_color, float specular_intensity ){
+        // phong_model_lights():  Add up the lights' contributions.
+        vec3 E = normalize( camera_center - vertex_worldspace );
+        vec3 result = vec3( 0.0 );
+        for(int i = 0; i < N_LIGHTS; i++) {
+          // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
+          // light will appear directional (uniform direction from all points), and we 
+          // simply obtain a vector towards the light by directly using the stored value.
+          // Otherwise if w is 1 it will appear as a point light -- compute the vector to 
+          // the point light's location from the current surface point.  In either case, 
+          // fade (attenuate) the light as the vector needed to reach it gets longer.  
+          vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
+                                        light_positions_or_vectors[i].w * vertex_worldspace;                                             
+          float distance_to_light = length( surface_to_light_vector );
+
+          vec3 L = normalize( surface_to_light_vector );
+          vec3 H = normalize( L + E );
+          // Compute the diffuse and specular components from the Phong
+          // Reflection Model, using Blinn's "halfway vector" method:
+          float diffuse  =      max( dot( N, L ), 0.0 );
+          float specular = pow( max( dot( N, H ), 0.0 ), smoothness );
+          float attenuation = 1.0 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
+          
+          vec3 light_contribution =
+            diffuse_color.xyz * light_colors[i].xyz * diffusivity * diffuse +
+            light_colors[i].xyz * specular_intensity * specularity * specular;
+          result += attenuation * light_contribution;
+        } // for loop end
+
+        return result;
+      }
+    `;
+  }
+
+  vertex_glsl_code() {
+    // ********* VERTEX SHADER *********
+    return `
+      ${this.shared_glsl_code()}
+      varying vec2 f_tex_coord;
+      attribute vec3 position, normal;                            
+      // Position is expressed in object coordinates.
+      attribute vec2 texture_coord;
+      
+      uniform mat4 model_transform;
+      uniform mat4 projection_camera_model_transform;
+
+      void main(){                                                                   
+        // The vertex's final resting place (in NDCS):
+        gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
+        // The final normal vector in screen space.
+        N = normalize( mat3( model_transform ) * normal / squared_scale);
+        vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
+        // Turn the per-vertex texture coordinate into an interpolated variable.
+        f_tex_coord = texture_coord;
+      }
+    `;
+  }
+
+  fragment_glsl_code() {
+    // ********* FRAGMENT SHADER *********
+    // A fragment is a pixel that's overlapped by the current triangle.
+    // Fragments affect the final image or get discarded due to depth.
+    return `
+      ${this.shared_glsl_code()}
+      varying vec2 f_tex_coord;
+      uniform sampler2D texture;
+      uniform sampler2D bump_map;
+      uniform sampler2D spec_map;
+
+      void main(){
+        // Sample the texture image in the correct place:
+        vec4 tex_color = texture2D( texture, f_tex_coord );
+        vec4 spec_color = texture2D( spec_map, f_tex_coord );
+        vec4 bump_color = texture2D( bump_map, f_tex_coord );
+        if( tex_color.w < .01 ) discard;
+
+        // convert spec_color to grayscale
+        float spec_intensity = dot(spec_color.rgb, vec3(0.299, 0.587, 0.114));
+        // use bump_color and N (which is the normal) to compute a bump map
+        vec3 N_bumped = N;//normalize( N + bump_color.rgb - 0.5 );
+
+        // Compute an initial (ambient) color:
+        gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
+        
+        // Compute the final color with contributions from lights:
+        gl_FragColor.xyz += phong_model_lights(
+          normalize( N_bumped ),
+          vertex_worldspace,
+          tex_color.xyz,
+          spec_intensity
+        );
+      }
+    `;
+  }
+
+  send_material(gl, gpu, material) {
+    // send_material(): Send the desired shape-wide material qualities to the
+    // graphics card, where they will tweak the Phong lighting formula.
+    gl.uniform4fv(gpu.shape_color, material.color);
+    gl.uniform1f(gpu.ambient, material.ambient);
+    gl.uniform1f(gpu.diffusivity, material.diffusivity);
+    gl.uniform1f(gpu.specularity, material.specularity);
+    gl.uniform1f(gpu.smoothness, material.smoothness);
+  }
+
+  send_gpu_state(gl, gpu, gpu_state, model_transform) {
+    // send_gpu_state():  Send the state of our whole drawing context to the GPU.
+    const O = vec4(0, 0, 0, 1),
+      camera_center = gpu_state.camera_transform.times(O).to3();
+    gl.uniform3fv(gpu.camera_center, camera_center);
+    // Use the squared scale trick from "Eric's blog" instead of inverse transpose matrix:
+    const squared_scale = model_transform
+      .reduce((acc, r) => {
+        return acc.plus(vec4(...r).times_pairwise(r));
+      }, vec4(0, 0, 0, 0))
+      .to3();
+    gl.uniform3fv(gpu.squared_scale, squared_scale);
+    const PCM = gpu_state.projection_transform
+      .times(gpu_state.camera_inverse)
+      .times(model_transform);
+    gl.uniformMatrix4fv(
+      gpu.model_transform,
+      false,
+      Matrix.flatten_2D_to_1D(model_transform.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.projection_camera_model_transform,
+      false,
+      Matrix.flatten_2D_to_1D(PCM.transposed())
+    );
+
+    // Omitting lights will show only the material color, scaled by the ambient term:
+    if (!gpu_state.lights.length) return;
+
+    const light_positions_flattened = [],
+      light_colors_flattened = [];
+    for (let i = 0; i < 4 * gpu_state.lights.length; i++) {
+      light_positions_flattened.push(
+        gpu_state.lights[Math.floor(i / 4)].position[i % 4]
+      );
+      light_colors_flattened.push(
+        gpu_state.lights[Math.floor(i / 4)].color[i % 4]
+      );
+    }
+    gl.uniform4fv(gpu.light_positions_or_vectors, light_positions_flattened);
+    gl.uniform4fv(gpu.light_colors, light_colors_flattened);
+    gl.uniform1fv(
+      gpu.light_attenuation_factors,
+      gpu_state.lights.map((l) => l.attenuation)
+    );
+  }
+
+  update_GPU(gl_context, gpu_addresses, gpu_state, model_transform, material) {
+    // Fill in any missing fields in the Material object with custom defaults for this shader:
+    const defaults = {color: color(0, 0, 0, 1), ambient: 0, diffusivity: 1, specularity: 1, smoothness: 40};
+    material = Object.assign({}, defaults, material);
+
+    this.send_material(gl_context, gpu_addresses, material);
+    this.send_gpu_state(gl_context, gpu_addresses, gpu_state, model_transform);
+
+    if (
+      material.texture && material.texture.ready &&
+      material.bump_map && material.bump_map.ready &&
+      material.spec_map && material.spec_map.ready
+    ) {
+      // Select texture unit 0 for the fragment shader Sampler2D uniform called "texture":
+      gl_context.uniform1i(gpu_addresses.texture, 0);
+      gl_context.uniform1i(gpu_addresses.bump_map, 1);
+      gl_context.uniform1i(gpu_addresses.spec_map, 2);
+      // For this draw, use the texture image from correct the GPU buffer:
+      material.texture.activate(gl_context, 0);
+      material.bump_map.activate(gl_context, 1);
+      material.spec_map.activate(gl_context, 2);
+    }
+  }
+}

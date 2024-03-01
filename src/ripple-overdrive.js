@@ -1,5 +1,13 @@
 import { defs, tiny } from "../examples/common.js";
-import { Phong_Shader_2, Gouraud_Shader, UV_Shader, Hosek_Wilkie_Skybox, Crosshair_Shader, Ripple_Shader } from "./custom-shaders.js";
+import {
+  Phong_Shader_2,
+  Gouraud_Shader,
+  UV_Shader,
+  Hosek_Wilkie_Skybox,
+  Crosshair_Shader,
+  Ripple_Shader,
+  Complex_Textured,
+} from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
@@ -20,6 +28,7 @@ const {
   Shape,
   Material,
   Scene,
+  Texture,
 } = tiny;
 
 const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version();
@@ -43,6 +52,7 @@ export class Ripple_Overdrive extends Scene {
         new Shape_From_File("objects/02-mountain.obj"),
       ],
     };
+    this.shapes.floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
 
     // *** Materials
     this.materials = {
@@ -86,6 +96,24 @@ export class Ripple_Overdrive extends Scene {
         size: 2.0,
         period: 10.0,
         birth: 0.0,
+      }),
+      grass_material: new Material(new Complex_Textured(), {
+        color: color(0, 0, 0, 1),
+        ambient: 0.2,
+        diffusivity: 4,
+        specularity: 2,
+        texture: new Texture(
+          "textures/tiled-grass-texture.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+        spec_map: new Texture(
+          "textures/tiled-grass-texture.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+        bump_map: new Texture(
+          "textures/tiled-grass-bump.png",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
       }),
     };
 
@@ -243,7 +271,7 @@ export class Ripple_Overdrive extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
-      this.materials.ambient_phong
+      this.materials.grass_material
     );
     
     this.shapes.water_surface.draw(
