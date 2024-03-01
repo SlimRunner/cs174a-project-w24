@@ -47,14 +47,46 @@ export class Ripple_Overdrive extends Scene {
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
-      phong: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0,color: color(1, 1, 1, 1)}),
-      phong2: new Material(new Phong_Shader_2(), {ambient: 0.6, diffusivity: 1, specularity: 0,color: color(1, 1, 1, 1), ambient_color: hex_color("#d8e8ff")}),
-      gouraud: new Material(new Gouraud_Shader(), {ambient: 0, diffusivity: 1, specularity: 0.4,color: color(1, 1, 1, 1)}),
+      matte: new Material(new defs.Phong_Shader(), {
+        ambient: 0,
+        diffusivity: 1,
+        specularity: 0,
+        color: color(1, 1, 1, 1),
+      }),
+      plastic: new Material(new defs.Phong_Shader(), {
+        ambient: 0,
+        diffusivity: 2,
+        specularity: 3,
+        color: color(1, 1, 1, 1),
+      }),
+      ambient_phong: new Material(new Phong_Shader_2(), {
+        ambient: 0.6,
+        diffusivity: 1,
+        specularity: 0,
+        color: color(1, 1, 1, 1),
+        ambient_color: hex_color("#d8e8ff"),
+      }),
+      gouraud: new Material(new Gouraud_Shader(), {
+        ambient: 0,
+        diffusivity: 1,
+        specularity: 0.4,
+        color: color(1, 1, 1, 1),
+      }),
       uv: new Material(new UV_Shader()),
-      matte: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 1, specularity: 0, color: color(1, 1, 1, 1)}),
+      matte: new Material(new defs.Phong_Shader(), {
+        ambient: 0,
+        diffusivity: 1,
+        specularity: 0,
+        color: color(1, 1, 1, 1),
+      }),
       skybox: new Material(new Hosek_Wilkie_Skybox()),
       ui_crosshair: new Material(new Crosshair_Shader()),
-      ripple: new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0, birth: 0.0}),
+      ripple: new Material(new Ripple_Shader(), {
+        color: hex_color("#ADD8E6"),
+        size: 2.0,
+        period: 10.0,
+        birth: 0.0,
+      }),
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -185,19 +217,19 @@ export class Ripple_Overdrive extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      this.materials.phong2
+      this.materials.ambient_phong
     );
     this.shapes.mountains[1].draw(
       context,
       program_state,
       model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 6)),
-      this.materials.phong.override(color(0.6, 0.4, 0.35, 1.0))
+      this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
     );
     this.shapes.mountains[2].draw(
       context,
       program_state,
       model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 6)),
-      this.materials.phong.override(color(0.6, 0.4, 0.35, 1.0))
+      this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
     );
 
     this.shapes.sphere.draw(
@@ -211,14 +243,14 @@ export class Ripple_Overdrive extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
-      this.materials.phong2
+      this.materials.ambient_phong
     );
     
     this.shapes.water_surface.draw(
       context,
       program_state,
       ripple_transform,
-      this.materials.phong.override(hex_color("#00FFFF"))
+      this.materials.matte.override(hex_color("#00FFFF"))
     );
 
     if (this.addRippleButton){
