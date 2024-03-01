@@ -71,7 +71,7 @@ export class Ripple_Overdrive extends Scene {
         color: color(1, 1, 1, 1),
       }),
       ambient_phong: new Material(new Phong_Shader_2(), {
-        ambient: 0.6,
+        ambient: 0.3,
         diffusivity: 1,
         specularity: 0,
         color: color(1, 1, 1, 1),
@@ -267,8 +267,9 @@ export class Ripple_Overdrive extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      this.materials.ambient_phong
+      this.materials.ambient_phong.override({color: color(0.6, 0.4, 0.35, 1.0), diffusivity: 5})
     );
+
     this.shapes.mountains[1].draw(
       context,
       program_state,
@@ -310,7 +311,7 @@ export class Ripple_Overdrive extends Scene {
       context,
       program_state,
       ripple_transform,
-      this.materials.matte.override(hex_color("#00FFFF"))
+      this.materials.plastic.override(hex_color("#00FFFF"))
     );
 
     if (this.addRippleButton){
