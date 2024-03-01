@@ -7,6 +7,70 @@ import {
 
 const { vec4, color, Shader, Matrix } = tiny;
 
+export class Flat_Color_Shader extends Shader {
+  // **Flat_Color** is a simple "procedural" texture shader, with
+  // texture coordinates but without an input image.
+  constructor() {
+    super();
+  }
+
+  shared_glsl_code() {
+    // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+    return `precision mediump float;
+      uniform vec4 shape_color;
+      uniform mat4 projection_matrix;
+      `;
+  }
+
+  vertex_glsl_code() {
+    // ********* VERTEX SHADER *********
+    return this.shared_glsl_code() + `
+      attribute vec3 position;
+      void main(){
+        gl_Position = projection_matrix * vec4(position, 1.0);
+      }`;
+  }
+
+  fragment_glsl_code() {
+    // ********* FRAGMENT SHADER *********
+    return this.shared_glsl_code() + `
+      void main(){
+        gl_FragColor = shape_color;
+      }`;
+  }
+
+  send_material(gl, gpu, material) {
+    gl.uniform4fv(gpu.shape_color, material.color);
+  }
+
+  send_gpu_state(gl, gpu, gpu_state, model_transform) {
+    const PCM = gpu_state.projection_transform
+      .times(gpu_state.camera_inverse)
+      .times(model_transform);
+    gl.uniformMatrix4fv(
+      gpu.projection_matrix,
+      false,
+      Matrix.flatten_2D_to_1D(PCM.transposed()))
+  }
+
+  update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+    // update_GPU(): Define how to synchronize our JavaScript's variables to the GPU's.  This is where the shader
+    // recieves ALL of its inputs.  Every value the GPU wants is divided into two categories:  Values that belong
+    // to individual objects being drawn (which we call "Material") and values belonging to the whole scene or
+    // program (which we call the "Program_State").  Send both a material and a program state to the shaders
+    // within this function, one data field at a time, to fully initialize the shader for a draw.
+
+    // Fill in any missing fields in the Material object with custom defaults for this shader:
+    const defaults = {
+      color: color(0, 0, 0, 1)
+    };
+    material = Object.assign({}, defaults, material);
+
+    this.send_material(context, gpu_addresses, material);
+    this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
+  }
+}
+
 export class Gouraud_Shader extends Shader {
   // This is a Shader using Phong_Shader as template
   // TODO: Modify the glsl coder here to create a Gouraud Shader (Planet 2)
@@ -72,7 +136,7 @@ export class Gouraud_Shader extends Shader {
       // Position is expressed in object coordinates.
       
       uniform mat4 model_transform;
-      uniform mat4 projection_camera_model_transform;
+      uniform mat4 projection_matrix;
 
       void main(){                     
         vec3 N, vertex_worldspace;                                              

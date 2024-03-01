@@ -7,6 +7,7 @@ import {
   Crosshair_Shader,
   Ripple_Shader,
   Complex_Textured,
+  Flat_Color_Shader,
 } from "./custom-shaders.js";
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
@@ -39,6 +40,7 @@ export class Ripple_Overdrive extends Scene {
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
+      light_src: new defs.Subdivision_Sphere(2),
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
       large_floor: new Square(),
@@ -58,6 +60,9 @@ export class Ripple_Overdrive extends Scene {
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
+      light_src_mat: new Material(new Flat_Color_Shader(), {
+        color: color(1, 1, 1, 1)
+      }),
       matte: new Material(new defs.Phong_Shader(), {
         ambient: 0,
         diffusivity: 1,
@@ -310,7 +315,7 @@ export class Ripple_Overdrive extends Scene {
     this.shapes.water_surface.draw(
       context,
       program_state,
-      ripple_transform,
+      model_transform.times(ripple_transform),
       this.materials.plastic.override(hex_color("#00FFFF"))
     );
 
@@ -320,6 +325,17 @@ export class Ripple_Overdrive extends Scene {
     }
     this.displayRipples(context, program_state)
     this.cleanRipples(t);
+
+    for (const light of program_state.lights){
+      this.shapes.light_src.draw(
+        context,
+        program_state,
+        model_transform
+          .times(Mat4.translation(light.position[0], light.position[1], light.position[2]))
+          .times(Mat4.scale(0.2, 0.2, 0.2)),
+        this.materials.light_src_mat.override({color: light.color})
+      );
+    }
     
     // =========================================================
     // Below this line only GUI elements must be rendered.
