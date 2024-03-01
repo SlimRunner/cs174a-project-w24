@@ -11,7 +11,6 @@ import {
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { draw_if_ready } from "./utilities.js";
 
 const {
   Vector,
