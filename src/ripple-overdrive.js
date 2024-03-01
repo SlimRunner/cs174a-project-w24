@@ -121,7 +121,7 @@ export class Ripple_Overdrive extends Scene {
         color: color(0, 0, 0, 1),
         ambient: 0.2,
         diffusivity: 4,
-        specularity: 3,
+        specularity: 6,
         texture: new Texture(
           // "textures/tiled-grass-texture.jpg",
           "textures/color_map.jpg",
