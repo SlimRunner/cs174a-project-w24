@@ -830,7 +830,7 @@ export class Complex_Textured extends Shader {
         // convert spec_color to grayscale
         float spec_intensity = dot(spec_color.rgb, vec3(0.299, 0.587, 0.114));
         // use bump_color and N (which is the normal) to compute a bump map
-        vec3 N_bumped = N;//normalize( N + bump_color.rgb - 0.5 );
+        vec3 N_bumped = normalize( N + (bump_color.rbg - 0.5) * 1.0 );
 
         // Compute an initial (ambient) color:
         gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
