@@ -38,10 +38,10 @@ export class Gouraud_Shader extends Shader {
         vec3 E = normalize( camera_center - vertex_worldspace );
         vec3 result = vec3( 0.0 );
         for(int i = 0; i < N_LIGHTS; i++){
-          // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
-          // light will appear directional (uniform direction from all points), and we 
+          // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+          // light will appear directional (uniform direction from all points), and we
           // simply obtain a vector towards the light by directly using the stored value.
-          // Otherwise if w is 1 it will appear as a point light -- compute the vector to 
+          // Otherwise if w is 1 it will appear as a point light -- compute the vector to
           // the point light's location from the current surface point.  In either case, 
           // fade (attenuate) the light as the vector needed to reach it gets longer.  
           vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
@@ -218,10 +218,10 @@ export class Phong_Shader_2 extends Shader {
         vec3 E = normalize( camera_center - vertex_worldspace );
         vec3 result = vec3( 0.0 );
         for(int i = 0; i < N_LIGHTS; i++){
-          // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
-          // light will appear directional (uniform direction from all points), and we 
+          // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+          // light will appear directional (uniform direction from all points), and we
           // simply obtain a vector towards the light by directly using the stored value.
-          // Otherwise if w is 1 it will appear as a point light -- compute the vector to 
+          // Otherwise if w is 1 it will appear as a point light -- compute the vector to
           // the point light's location from the current surface point.  In either case, 
           // fade (attenuate) the light as the vector needed to reach it gets longer.  
           vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
@@ -249,13 +249,13 @@ export class Phong_Shader_2 extends Shader {
     // ********* VERTEX SHADER *********
     return `
       ${this.shared_glsl_code()}
-      attribute vec3 position, normal;                            
+      attribute vec3 position, normal;
       // Position is expressed in object coordinates.
-      
+
       uniform mat4 model_transform;
       uniform mat4 projection_camera_model_transform;
 
-      void main(){                                                                   
+      void main() {
         // The vertex's final resting place (in NDCS):
         gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
         // The final normal vector in screen space.
@@ -271,7 +271,8 @@ export class Phong_Shader_2 extends Shader {
     // Fragments affect the final image or get discarded due to depth.
     return `
       ${this.shared_glsl_code()}
-      void main(){                                                           
+
+      void main() {
         // Compute an initial (ambient) color:
         gl_FragColor = vec4( shape_ambient_color.xyz * ambient, shape_color.w );
         // Compute the final color with contributions from lights:
@@ -756,10 +757,10 @@ export class Complex_Textured extends Shader {
         vec3 E = normalize( camera_center - vertex_worldspace );
         vec3 result = vec3( 0.0 );
         for(int i = 0; i < N_LIGHTS; i++) {
-          // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
-          // light will appear directional (uniform direction from all points), and we 
+          // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+          // light will appear directional (uniform direction from all points), and we
           // simply obtain a vector towards the light by directly using the stored value.
-          // Otherwise if w is 1 it will appear as a point light -- compute the vector to 
+          // Otherwise if w is 1 it will appear as a point light -- compute the vector to
           // the point light's location from the current surface point.  In either case, 
           // fade (attenuate) the light as the vector needed to reach it gets longer.  
           vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
