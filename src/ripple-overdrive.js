@@ -42,7 +42,8 @@ export class Ripple_Overdrive extends Scene {
     this.shapes = {
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
-      floor: new Square(),
+      large_floor: new Square(),
+      small_square: new Square(),
       water_surface: new Square(),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),
@@ -52,7 +53,8 @@ export class Ripple_Overdrive extends Scene {
         new Shape_From_File("objects/02-mountain.obj"),
       ],
     };
-    this.shapes.floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
+    this.shapes.large_floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
+    this.shapes.small_square.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(4)));
 
     // *** Materials
     this.materials = {
@@ -97,7 +99,7 @@ export class Ripple_Overdrive extends Scene {
         period: 10.0,
         birth: 0.0,
       }),
-      grass_material: new Material(new Complex_Textured(), {
+      grass_mat: new Material(new Complex_Textured(), {
         color: color(0, 0, 0, 1),
         ambient: 0.2,
         diffusivity: 4,
@@ -112,6 +114,27 @@ export class Ripple_Overdrive extends Scene {
         ),
         bump_map: new Texture(
           "textures/tiled-grass-bump.png",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+      }),
+      stone_mat: new Material(new Complex_Textured(), {
+        color: color(0, 0, 0, 1),
+        ambient: 0.2,
+        diffusivity: 4,
+        specularity: 3,
+        texture: new Texture(
+          // "textures/tiled-grass-texture.jpg",
+          "textures/color_map.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+        spec_map: new Texture(
+          // "textures/tiled-grass-texture.jpg",
+          "textures/spec_map.jpg",
+          "LINEAR_MIPMAP_LINEAR"
+        ),
+        bump_map: new Texture(
+          // "textures/tiled-grass-bump.png",
+          "textures/normal_map.jpg",
           "LINEAR_MIPMAP_LINEAR"
         ),
       }),
@@ -267,11 +290,21 @@ export class Ripple_Overdrive extends Scene {
       this.materials.uv
     );
 
-    this.shapes.floor.draw(
+    this.shapes.large_floor.draw(
       context,
       program_state,
       model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
-      this.materials.grass_material
+      this.materials.grass_mat
+    );
+
+    this.shapes.small_square.draw(
+      context,
+      program_state,
+      model_transform
+        .times(Mat4.translation(16, 0.01, 0))
+        .times(Mat4.scale(-8, 0.01, 8))
+        ,
+      this.materials.stone_mat
     );
     
     this.shapes.water_surface.draw(
