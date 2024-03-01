@@ -795,7 +795,6 @@ export class Complex_Textured extends Shader {
 
   constructor(num_lights = 2) {
     super();
-    console.log(this.num_lights);
     this.num_lights = num_lights;
   }
 

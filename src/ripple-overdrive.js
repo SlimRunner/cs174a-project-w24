@@ -12,6 +12,7 @@ import {
 import { Square } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
+import { lerp } from "./math-extended.js";
 
 const {
   Vector,
@@ -37,6 +38,9 @@ export class Ripple_Overdrive extends Scene {
   constructor() {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
+
+    this.fov = 60;
+    this.fov_target = 60;
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
@@ -155,6 +159,17 @@ export class Ripple_Overdrive extends Scene {
     this.rippleShaders = [];
   }
 
+  add_mouse_controls(canvas) {
+    const wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
+    canvas.addEventListener(wheelEvent, (event) => {
+      event.preventDefault();
+      this.fov_target = Math.min(
+        70, Math.max(20, this.fov_target + (event.deltaY < 0 ? -1 : 1) * 10)
+      );
+      return false;
+    });
+  }
+
   make_control_panel() {
     // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
     // this.key_triggered_button(
@@ -220,17 +235,21 @@ export class Ripple_Overdrive extends Scene {
     const GL = context.context;
 
     if (!context.scratchpad.controls) {
+      this.add_mouse_controls(context.canvas);
       // Add a movement controls panel to the page:
       this.children.push(
-        (context.scratchpad.controls = new Walk_Movement())
+        (context.scratchpad.controls = new Walk_Movement({
+          get_fov: () => this.fov
+        }))
       );
       // context.canvas.style.cursor = "none";
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
 
+    this.fov = lerp(this.fov, this.fov_target, 0.1);
     program_state.projection_transform = Mat4.perspective(
-      Math.PI * 64 / 180,
+      Math.PI * this.fov / 180,
       context.width / context.height,
       0.1,
       1000
