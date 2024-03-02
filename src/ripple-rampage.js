@@ -32,7 +32,7 @@ const {
 
 const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version();
 
-export class Ripple_Overdrive extends Scene {
+export class Ripple_Rampage extends Scene {
   constructor() {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
