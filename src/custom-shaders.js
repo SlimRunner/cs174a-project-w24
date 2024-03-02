@@ -677,8 +677,8 @@ export class Ripple_Shader extends Shader {
         // TODO:  Complete the main function of the fragment shader (Extra Credit Part II).
         return this.shared_glsl_code() + `
         void main(){
-          float relativeTime = 1.0*(time-birth+0.25);
-          float dist = distance(point_position.xyz, center.xyz);
+          float relativeTime = 2.0*(time-birth+0.25);
+          float dist = 8.0*distance(point_position.xyz, center.xyz);
           float decay = 1.0 / pow(10.0, (1.0/relativeTime));
           float scale = wave_size * pow(decay, dist) / relativeTime;
           float sinusoid = sin((wave_period * (dist - relativeTime/2.0))/relativeTime);

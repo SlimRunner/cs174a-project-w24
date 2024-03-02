@@ -44,6 +44,7 @@ export class Ripple_Rampage extends Scene {
       large_floor: new Square(),
       small_square: new Square(),
       water_surface: new Square(),
+      raindrop: new defs.Subdivision_Sphere(4),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),
       mountains: [
@@ -148,6 +149,9 @@ export class Ripple_Rampage extends Scene {
     this.addRippleButton = false;
     this.ripplesBirth = [];
     this.rippleShaders = [];
+    this.addRainButton = false;
+    this.rainVelocity = [];
+    this.rainTransform = [];
   }
 
   make_control_panel() {
@@ -158,6 +162,8 @@ export class Ripple_Rampage extends Scene {
     //   callback
     // );
     this.key_triggered_button("Add Ripple", ["Shift", "R"], () => this.addRippleButton = true);
+    this.new_line();
+    this.key_triggered_button("Add Raindrop", ["Shift", "W"], () => this.addRainButton = true);
     this.new_line();
   }
 
@@ -185,12 +191,48 @@ export class Ripple_Rampage extends Scene {
 
   displayRipples(context, program_state){
     for (let i = 0; i < this.rippleShaders.length; i++) {
-      let model_transform = Mat4.translation(0, 0.02, 0).times(Mat4.scale(4, 1, 4));
+      let ripple_transform = Mat4.translation(0, 0.02, 0).times(Mat4.scale(4, 1, 4));
       this.shapes.water_surface.draw(
         context,
         program_state,
-        model_transform,
+        ripple_transform,
         this.rippleShaders[i]
+      );  
+    }
+  }
+
+  cleanRaindrops(time){
+    if (this.rainTransform.length === 0){
+      return;
+    }
+    let notClean = true;
+    while (notClean && this.rainTransform.length > 0){
+      if (this.rainTransform[0][1][3] < 0.0){
+        this.rainVelocity.shift();
+        this.rainTransform.shift();
+        this.addRipple(time)
+      }
+      else{
+        notClean = false;
+      }
+    }
+  }
+
+  addRaindrop(){
+    this.rainTransform.push(Mat4.translation(0, 2, 0).times(Mat4.scale(0.01, 0.1, 0.01)));
+    this.rainVelocity.push(7);
+  }
+
+  displayRaindrops(context, program_state){
+    for (let i = 0; i < this.rainTransform.length; i++) {
+      let dt = program_state.animation_delta_time / 1000;
+      this.rainVelocity[i] = this.rainVelocity[i] + 7*9.8 * dt;
+      this.rainTransform[i] = this.rainTransform[i].times(Mat4.translation(0, -this.rainVelocity[i]*dt, 0));
+      this.shapes.raindrop.draw(
+        context,
+        program_state,
+        this.rainTransform[i],
+        this.materials.ambient_phong.override(hex_color("#FFFFFF"))
       );  
     }
   }
@@ -312,7 +354,7 @@ export class Ripple_Rampage extends Scene {
       ripple_transform,
       this.materials.matte.override(hex_color("#00FFFF"))
     );
-
+    
     if (this.addRippleButton){
       this.addRipple(t);
       this.addRippleButton = false;
@@ -320,6 +362,12 @@ export class Ripple_Rampage extends Scene {
     this.displayRipples(context, program_state)
     this.cleanRipples(t);
     
+    if (this.addRainButton){
+      this.addRaindrop(t);
+      this.addRainButton = false;
+    }
+    this.displayRaindrops(context, program_state)
+    this.cleanRaindrops(t);    
     // =========================================================
     // Below this line only GUI elements must be rendered.
     
