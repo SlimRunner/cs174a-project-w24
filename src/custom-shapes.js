@@ -71,7 +71,10 @@ export class Lake_Mesh extends Shape {
       this.arrays.texture_coord.push(Vector.create(x, z));
     }
     
-    for (let i = 0; i <= subdivisions; ++i) {
+    // be careful with the indices
+    // this is a triangle fan, so the first index is always 0
+    // also subdivisions + 1 is the last index
+    for (let i = 1; i <= subdivisions; ++i) {
       this.indices.push(0, i, i + 1);
     }
   }
