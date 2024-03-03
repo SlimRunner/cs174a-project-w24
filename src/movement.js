@@ -121,7 +121,7 @@ export class Walk_Movement extends Scene {
       const x_delta = 2 * mouse_sensitivity_fov * e.movementX / (rect.right - rect.left);
       const y_delta = mouse_sensitivity_fov * e.movementY / (rect.bottom - rect.top);
       this.mouse.from_center[0] += x_delta;
-      this.mouse.from_center[1] = Math.max(-1, this.mouse.from_center[1] + Math.min(1, y_delta));
+      this.mouse.from_center[1] = Math.max(-1, Math.min(1, this.mouse.from_center[1] + y_delta));
     }
     canvas.addEventListener("mousedown", (e) => {
       e.preventDefault();
