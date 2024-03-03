@@ -3,6 +3,7 @@ import { defs, tiny } from "../examples/common.js";
 const {
   Vector,
   Vector3,
+  vec3,
   vec,
   Shape,
 } = tiny;
@@ -32,5 +33,46 @@ export class Square extends Shape {
     this.arrays.texture_coord = Vector.cast([0, 0], [1, 0], [0, 1], [1, 1]);
     // Use two triangles this time, indexing into four distinct vertices:
     this.indices.push(0, 1, 2, 1, 3, 2);
+  }
+}
+
+export class Lake_Mesh extends Shape {
+  constructor({
+    subdivisions = 40,
+    phase = 1.88,
+  } = {}) {
+    super("position", "normal", "texture_coord");
+
+    // https://www.desmos.com/calculator/jdyl5xpkbs
+
+    const TAU = Math.PI * 2;
+    const displacement_function = (x, theta) => {
+      return (
+        0.1  * Math.sin( 3 * TAU * (x +     theta)) +
+        0.04 * Math.sin(18 * TAU * (x + 2 * theta)) +
+        0.1  * Math.sin( 7 * TAU * (x + 3 * theta)) + 1
+      );
+    }
+    
+    this.arrays.position = [vec3(0, 0, 0)];
+    this.arrays.normal = [vec3(0, 1, 0)]; // y-up
+    this.arrays.texture_coord = [Vector.create(0, 0)];
+    
+    for (let i = 0; i <= subdivisions; ++i) {
+      const alpha = i / subdivisions
+      const theta = TAU * alpha;
+      const r_delta = displacement_function(alpha, phase);
+
+      const x = Math.cos(theta) * r_delta;
+      const z = Math.sin(theta) * r_delta;
+
+      this.arrays.position.push(vec3(x, 0, z));
+      this.arrays.normal.push(vec3(0, 1, 0));
+      this.arrays.texture_coord.push(Vector.create(x, z));
+    }
+    
+    for (let i = 0; i <= subdivisions; ++i) {
+      this.indices.push(0, i, i + 1);
+    }
   }
 }
