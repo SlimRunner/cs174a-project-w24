@@ -8,7 +8,7 @@ import {
   Ripple_Shader,
   Complex_Textured,
 } from "./custom-shaders.js";
-import { Square } from "./custom-shapes.js";
+import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 
@@ -43,7 +43,7 @@ export class Ripple_Rampage extends Scene {
       sphere: new Flat_Sphere(3),
       large_floor: new Square(),
       small_square: new Square(),
-      water_surface: new Square(),
+      water_surface: new Lake_Mesh(),
       raindrop: new defs.Subdivision_Sphere(4),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),
@@ -342,7 +342,7 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       model_transform
-        .times(Mat4.translation(16, 0.01, 0))
+        .times(Mat4.translation(18, 0.01, 0))
         .times(Mat4.scale(-8, 0.01, 8))
         ,
       this.materials.stone_mat
