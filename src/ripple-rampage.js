@@ -149,9 +149,14 @@ export class Ripple_Rampage extends Scene {
     this.addRippleButton = false;
     this.ripplesBirth = [];
     this.rippleShaders = [];
+    this.rippleLoc = [];
+    
     this.addRainButton = false;
     this.rainVelocity = [];
     this.rainTransform = [];
+
+    
+    this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1, 1, 1));
   }
 
   make_control_panel() {
@@ -176,6 +181,7 @@ export class Ripple_Rampage extends Scene {
       if ((this.ripplesBirth[0] + 3.0) < time){
         this.ripplesBirth.shift();
         this.rippleShaders.shift();
+        this.rippleLoc.shift();
       }
       else{
         notClean = false;
@@ -183,15 +189,15 @@ export class Ripple_Rampage extends Scene {
     }
   }
 
-  addRipple(time){
+  addRipple(time, loc){
     this.ripplesBirth.push(time);
+    this.rippleLoc.push(loc);
     this.rippleShaders.push(new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0, birth: time}));
-    console.log(this.ripplesBirth);
   }
 
   displayRipples(context, program_state){
     for (let i = 0; i < this.rippleShaders.length; i++) {
-      let ripple_transform = Mat4.translation(0, 0.02, 0).times(Mat4.scale(4, 1, 4));
+      let ripple_transform = this.rippleLoc[i].times(Mat4.translation(0, 0.02, 0).times(Mat4.scale(4, 1, 4)));
       this.shapes.water_surface.draw(
         context,
         program_state,
@@ -207,10 +213,17 @@ export class Ripple_Rampage extends Scene {
     }
     let notClean = true;
     while (notClean && this.rainTransform.length > 0){
-      if (this.rainTransform[0][1][3] < 0.0){
+      let rainx = this.rainTransform[0][0][3];
+      let rainy = this.rainTransform[0][1][3];
+      let rainz = this.rainTransform[0][2][3];
+      if (rainy < 0.0){
         this.rainVelocity.shift();
         this.rainTransform.shift();
-        this.addRipple(time)
+        let insideShape = this.shapes.water_surface.isInside(rainx, rainz);
+        if(insideShape){
+          this.addRipple(time, Mat4.translation(rainx, 0, rainz));
+          this.lakeTransform = this.lakeTransform.times(Mat4.scale(1.01, 1, 1.01));
+        }
       }
       else{
         notClean = false;
@@ -218,8 +231,8 @@ export class Ripple_Rampage extends Scene {
     }
   }
 
-  addRaindrop(){
-    this.rainTransform.push(Mat4.translation(0, 2, 0).times(Mat4.scale(0.01, 0.1, 0.01)));
+  addRaindrop(loc){
+    this.rainTransform.push(loc.times(Mat4.translation(0, 2, 0).times(Mat4.scale(0.01, 0.08, 0.01))));
     this.rainVelocity.push(7);
   }
 
@@ -275,8 +288,7 @@ export class Ripple_Rampage extends Scene {
 
     let model_transform = Mat4.identity();
 
-    const ripple_transform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(8, 1, 8));
-
+    this.shapes.water_surface.setScale(this.lakeTransform);
     // The parameters of the Light are: position, color, size
     program_state.lights = [
       new Light(vec4(-5, 300, -5, 1), color(1,1,1,1), 10000),
@@ -351,19 +363,21 @@ export class Ripple_Rampage extends Scene {
     this.shapes.water_surface.draw(
       context,
       program_state,
-      ripple_transform,
+      this.lakeTransform,
       this.materials.matte.override(hex_color("#00FFFF"))
     );
     
+    GL.disable(GL.DEPTH_TEST);
     if (this.addRippleButton){
-      this.addRipple(t);
+      this.addRipple(t, Mat4.translation(0, 0, 1));
       this.addRippleButton = false;
     }
     this.displayRipples(context, program_state)
     this.cleanRipples(t);
+    GL.enable(GL.DEPTH_TEST);
     
     if (this.addRainButton){
-      this.addRaindrop(t);
+      this.addRaindrop(Mat4.translation(0, 0, 0));
       this.addRainButton = false;
     }
     this.displayRaindrops(context, program_state)
