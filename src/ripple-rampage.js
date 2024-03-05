@@ -197,11 +197,10 @@ export class Ripple_Rampage extends Scene {
 
   displayRipples(context, program_state){
     for (let i = 0; i < this.rippleShaders.length; i++) {
-      let ripple_transform = this.rippleLoc[i].times(Mat4.translation(0, 0.02, 0).times(Mat4.scale(4, 1, 4)));
       this.shapes.water_surface.draw(
         context,
         program_state,
-        ripple_transform,
+        this.rippleLoc[i],
         this.rippleShaders[i]
       );  
     }
@@ -222,7 +221,8 @@ export class Ripple_Rampage extends Scene {
         let insideShape = this.shapes.water_surface.isInside(rainx, rainz);
         if(insideShape){
           this.addRipple(time, Mat4.translation(rainx, 0, rainz));
-          this.lakeTransform = this.lakeTransform.times(Mat4.scale(1.01, 1, 1.01));
+          this.lakeTransform[0][0] = this.lakeTransform[0][0] + 0.01;
+          this.lakeTransform[2][2] = this.lakeTransform[2][2] + 0.01;
         }
       }
       else{
