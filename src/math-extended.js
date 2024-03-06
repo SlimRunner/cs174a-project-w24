@@ -10,6 +10,8 @@ const {
   Mat4,
 } = tiny;
 
+export const GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;
+
 export function lerp(x, y, t) {
   return (1 - t) * x + t * y;
 }
@@ -111,4 +113,51 @@ export function min_abs(value, max_length) {
   } else {
     return value;
   }
+}
+
+export function get_icosahedron_vertices() {
+  const phi_dist = Math.sqrt(GOLDEN_RATIO * GOLDEN_RATIO + 1);
+  const a = 1 / phi_dist;
+  const b = GOLDEN_RATIO / phi_dist;
+
+  const vertices = [];
+
+  for (let x = -1; x <= 1; x += 2) {
+    for (let y = -1; y <= 1; y += 2) {
+      for (let z = 1; z <= 3; z += 1) {
+        switch (z) {
+          case 1:
+            vertices.push(vec3(a * x, 0, b * y));
+            break;
+          case 2:
+            vertices.push(vec3(0, b * x, a * y));
+            break;
+          case 3:
+            vertices.push(vec3(b * x, a * y, 0));
+            break;
+        }
+      }
+    }
+  }
+  console.log(vertices);
+  
+  const edge_pairs = new Map();
+  for (let i = 0; i < vertices.length; i++) {
+    for (let j = 0; j < i; j++) {
+      let edge_length = Math.hypot(...vertices[j].minus(vertices[i]));
+      if (edge_length > 0 && edge_length < 1.1) {
+        if (!edge_pairs.has(i)) {
+          edge_pairs.set(i, new Set([j]));
+        } else {
+          edge_pairs.get(i).add(j);
+        }
+        if (!edge_pairs.has(j)) {
+          edge_pairs.set(j, new Set([i]));
+        } else {
+          edge_pairs.get(j).add(i);
+        }
+      }
+    }
+  }
+  console.log(edge_pairs);
 }

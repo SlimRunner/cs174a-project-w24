@@ -11,6 +11,7 @@ import {
 import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
+import { get_icosahedron_vertices } from "./math-extended.js";
 
 const {
   Vector,
@@ -34,6 +35,7 @@ const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version()
 
 export class Ripple_Rampage extends Scene {
   constructor() {
+    get_icosahedron_vertices();
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
 
