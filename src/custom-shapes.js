@@ -33,6 +33,9 @@ export class Square extends Shape {
     this.arrays.texture_coord = Vector.cast([0, 0], [1, 0], [0, 1], [1, 1]);
     // Use two triangles this time, indexing into four distinct vertices:
     this.indices.push(0, 1, 2, 1, 3, 2);
+
+    this.xScale = 1.0;
+    this.zScale = 1.0;
   }
 }
 
@@ -77,5 +80,24 @@ export class Lake_Mesh extends Shape {
     for (let i = 1; i <= subdivisions; ++i) {
       this.indices.push(0, i, i + 1);
     }
+  }
+
+  setScale(transform){
+    this.xScale = transform[0][0];
+    this.zScale = transform[2][2];
+  }
+  
+  isInside(x, z){
+    let counter = 0;
+    for (let i = 1; i < this.arrays.position.length-1; i++) {
+      let edgep1x = this.arrays.position[i][0]*this.xScale;
+      let edgep1z = this.arrays.position[i][2]*this.zScale;
+      let edgep2x = this.arrays.position[i+1][0]*this.xScale;
+      let edgep2z = this.arrays.position[i+1][2]*this.zScale;
+      if (((z < edgep1z) != (z < edgep2z)) && (x < edgep1x + ((z-edgep1z)/(edgep2z-edgep1z))*(edgep2x-edgep1x))){
+        counter += 1;
+      }
+    }
+    return (counter%2)===1;
   }
 }
