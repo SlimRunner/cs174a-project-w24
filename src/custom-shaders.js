@@ -641,6 +641,11 @@ export class Ripple_Shader extends Shader {
 
     constructor(){
         super();
+        this.birth = 0;
+    }
+
+    setBirth(time){
+      this.birth = time;
     }
 
     shared_glsl_code() {
@@ -704,7 +709,7 @@ export class Ripple_Shader extends Shader {
       gl.uniform4fv(gpu.shape_color, material.color);
       gl.uniform1f(gpu.wave_size, material.size);
       gl.uniform1f(gpu.wave_period, material.period);
-      gl.uniform1f(gpu.birth, material.birth);
+      gl.uniform1f(gpu.birth, this.birth);
     }
   
     send_gpu_state(gl, gpu, gpu_state, model_transform) {

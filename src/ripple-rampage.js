@@ -148,8 +148,9 @@ export class Ripple_Rampage extends Scene {
 
     this.addRippleButton = false;
     this.ripplesBirth = [];
-    this.rippleShaders = [];
     this.rippleLoc = [];
+    this.rippleShader = new Ripple_Shader();
+    this.rippleMaterial = new Material(this.rippleShader, {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0});
     
     this.addRainButton = false;
     this.rainVelocity = [];
@@ -180,7 +181,6 @@ export class Ripple_Rampage extends Scene {
     while (notClean && this.ripplesBirth.length > 0){
       if ((this.ripplesBirth[0] + 3.0) < time){
         this.ripplesBirth.shift();
-        this.rippleShaders.shift();
         this.rippleLoc.shift();
       }
       else{
@@ -192,16 +192,16 @@ export class Ripple_Rampage extends Scene {
   addRipple(time, loc){
     this.ripplesBirth.push(time);
     this.rippleLoc.push(loc);
-    this.rippleShaders.push(new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0, birth: time}));
   }
 
   displayRipples(context, program_state){
-    for (let i = 0; i < this.rippleShaders.length; i++) {
+    for (let i = 0; i < this.ripplesBirth.length; i++) {
+      this.rippleShader.setBirth(this.ripplesBirth[i]);
       this.shapes.water_surface.draw(
         context,
         program_state,
         this.rippleLoc[i],
-        this.rippleShaders[i]
+        this.rippleMaterial
       );  
     }
   }
