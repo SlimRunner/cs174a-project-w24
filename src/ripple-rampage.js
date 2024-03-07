@@ -11,6 +11,7 @@ import {
 import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
+import { ray_triangle_intersection } from "./utilities.js";
 
 const {
   Vector,
@@ -37,6 +38,13 @@ export class Ripple_Rampage extends Scene {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
 
+    this.transfomations = {
+      cloud_mat: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+      large_floor_mat: Mat4.translation(0, 0, 0).times(Mat4.scale(100, 1, 100)),
+      large_dome: Mat4.translation(20, 30, 15).times(Mat4.scale(20, 20, 20)),
+      click_at: Mat4.identity()
+    }
+
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
       cube: new defs.Cube(),
@@ -52,6 +60,7 @@ export class Ripple_Rampage extends Scene {
         new Shape_From_File("objects/01-mountain.obj"),
         new Shape_From_File("objects/02-mountain.obj"),
       ],
+      cloud: new Shape_From_File("objects/cloud-simple.obj"),
     };
     this.shapes.large_floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
     this.shapes.small_square.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(4)));
@@ -139,6 +148,23 @@ export class Ripple_Rampage extends Scene {
         ),
       }),
     };
+
+    this.groups = {
+      clickables: [
+        {
+          object: this.shapes.cloud,
+          model_transform: this.transfomations.cloud_mat
+        },
+        {
+          object: this.shapes.large_floor,
+          model_transform: this.transfomations.large_floor_mat
+        },
+        {
+          object: this.shapes.sphere,
+          model_transform: this.transfomations.large_dome
+        },
+      ]
+    }
 
     this.on_click = this.on_click.bind(this);
 
@@ -259,6 +285,43 @@ export class Ripple_Rampage extends Scene {
     // debugger;
     console.table(position);
     console.table(direction);
+    const GP = this.groups;
+    let inter_point = null, new_point = null;
+    let inter_dist = Infinity, new_dist = 0;
+    let tpos, arr_alias;
+
+    for (const clickable of GP.clickables) {
+      for (let i = 0; i < clickable.object.indices.length; i += 3) {
+        arr_alias = clickable.object.arrays;
+        // console.table(arr_alias.position[clickable.object.indices[i]]);
+        tpos = [
+          // transform_vector(clickable.model_transform, arr_alias.position[clickable.object.indices[i]]),
+          // transform_vector(clickable.model_transform, arr_alias.position[clickable.object.indices[i + 1]]),
+          // transform_vector(clickable.model_transform, arr_alias.position[clickable.object.indices[i + 2]]),
+          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i]], 1)),
+          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i + 1]], 1)),
+          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i + 2]], 1)),
+        ]
+        new_point = ray_triangle_intersection(
+          position, direction,
+          tpos[0],
+          tpos[1],
+          tpos[2]
+        );
+        if (new_point) {
+          new_dist = new_point.minus(position).norm();
+          if (new_dist < inter_dist) {
+            inter_point = new_point;
+            inter_dist = new_dist;
+          }
+        }
+      }
+    }
+    if (inter_point) {
+      this.transfomations.click_at[0][3] = inter_point[0];
+      this.transfomations.click_at[1][3] = inter_point[1];
+      this.transfomations.click_at[2][3] = inter_point[2];
+    }
   }
   
   display(context, program_state) {
@@ -311,11 +374,17 @@ export class Ripple_Rampage extends Scene {
     // =========================================================
     // Drawing environment elements (distant)
     // Be careful of the order
-  
-    const cam_loc = program_state
-      .camera_transform
+    
+    const CMT = program_state.camera_transform;
+    const cam_loc = CMT
       .sub_block([0, 3], [3, 4])
       .flat();
+    const cam_lead = Mat4.from([
+      [CMT[0][0], 0, CMT[0][2], CMT[0][3]    ],
+      [        0, 1,         0, CMT[1][3] + 1],
+      [CMT[2][0], 0, CMT[2][2], CMT[2][3]    ],
+      [        0, 0,         0,         1],
+    ]);
 
     // the following box ignores the depth buffer
     GL.disable(GL.DEPTH_TEST);
@@ -349,17 +418,19 @@ export class Ripple_Rampage extends Scene {
       this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
     );
 
-    this.shapes.sphere.draw(
+    this.shapes.cloud.draw(
       context,
       program_state,
-      model_transform.times(Mat4.translation(0, 3, 0)),
+      // cam_lead.times(Mat4.translation(0, 0, -3)),
+      this.transfomations.cloud_mat,
       this.materials.uv
     );
 
     this.shapes.large_floor.draw(
       context,
       program_state,
-      model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
+      // model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
+      this.transfomations.large_floor_mat,
       this.materials.grass_mat
     );
 
@@ -372,6 +443,20 @@ export class Ripple_Rampage extends Scene {
         ,
       this.materials.stone_mat
     );
+
+    this.shapes.sphere.draw(
+      context,
+      program_state,
+      this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25)),
+      this.materials.matte
+    )
+    
+    this.shapes.sphere.draw(
+      context,
+      program_state,
+      this.transfomations.large_dome,
+      this.materials.uv
+    )
     
     this.shapes.water_surface.draw(
       context,
