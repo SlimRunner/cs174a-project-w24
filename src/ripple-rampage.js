@@ -11,7 +11,7 @@ import {
 import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { ray_triangle_intersection } from "./utilities.js";
+import { check_scene_intersection } from "./utilities.js";
 
 const {
   Vector,
@@ -159,13 +159,8 @@ export class Ripple_Rampage extends Scene {
           object: this.shapes.large_floor,
           model_transform: this.transfomations.large_floor_mat
         },
-        {
-          object: this.shapes.sphere,
-          model_transform: this.transfomations.large_dome
-        },
-      ]
-    }
 
+    this.captured_object = null;
     this.on_click = this.on_click.bind(this);
 
     this.initial_camera_location = Mat4.look_at(
@@ -282,38 +277,23 @@ export class Ripple_Rampage extends Scene {
     position,
     direction
   }) {
-    const GP = this.groups;
-    let inter_point = null, new_point = null;
-    let inter_dist = Infinity, new_dist = 0;
-    let tpos, arr_alias;
-
-    for (const clickable of GP.clickables) {
-      for (let i = 0; i < clickable.object.indices.length; i += 3) {
-        arr_alias = clickable.object.arrays;
-        tpos = [
-          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i]], 1)),
-          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i + 1]], 1)),
-          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i + 2]], 1)),
-        ]
-        new_point = ray_triangle_intersection(
-          position, direction,
-          tpos[0],
-          tpos[1],
-          tpos[2]
-        );
-        if (new_point) {
-          new_dist = new_point.minus(position).norm();
-          if (new_dist < inter_dist) {
-            inter_point = new_point;
-            inter_dist = new_dist;
-          }
-        }
-      }
+    if (this.captured_object) {
+      // let item go
+      this.captured_object = null;
+      return;
     }
-    if (inter_point) {
-      this.transfomations.click_at[0][3] = inter_point[0];
-      this.transfomations.click_at[1][3] = inter_point[1];
-      this.transfomations.click_at[2][3] = inter_point[2];
+
+    const {
+      point: intersection,
+      mesh_index: mesh_index
+    } = check_scene_intersection(position, direction, this.groups.clickables);
+    
+    if (intersection) {
+      this.transfomations.click_at[0][3] = intersection[0];
+      this.transfomations.click_at[1][3] = intersection[1];
+      this.transfomations.click_at[2][3] = intersection[2];
+
+      this.captured_object = this.groups.clickables[mesh_index];
     }
   }
   
@@ -442,13 +422,6 @@ export class Ripple_Rampage extends Scene {
       program_state,
       this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25)),
       this.materials.matte
-    )
-    
-    this.shapes.sphere.draw(
-      context,
-      program_state,
-      this.transfomations.large_dome,
-      this.materials.uv
     )
     
     this.shapes.water_surface.draw(
