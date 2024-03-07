@@ -282,9 +282,6 @@ export class Ripple_Rampage extends Scene {
     position,
     direction
   }) {
-    // debugger;
-    console.table(position);
-    console.table(direction);
     const GP = this.groups;
     let inter_point = null, new_point = null;
     let inter_dist = Infinity, new_dist = 0;
@@ -293,11 +290,7 @@ export class Ripple_Rampage extends Scene {
     for (const clickable of GP.clickables) {
       for (let i = 0; i < clickable.object.indices.length; i += 3) {
         arr_alias = clickable.object.arrays;
-        // console.table(arr_alias.position[clickable.object.indices[i]]);
         tpos = [
-          // transform_vector(clickable.model_transform, arr_alias.position[clickable.object.indices[i]]),
-          // transform_vector(clickable.model_transform, arr_alias.position[clickable.object.indices[i + 1]]),
-          // transform_vector(clickable.model_transform, arr_alias.position[clickable.object.indices[i + 2]]),
           clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i]], 1)),
           clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i + 1]], 1)),
           clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i + 2]], 1)),

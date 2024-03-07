@@ -6,7 +6,6 @@ const {
 
 export function ray_triangle_intersection(point, dir, a, b, c) {
   // https://courses.cs.washington.edu/courses/csep557/10au/lectures/triangle_intersection.pdf
-  // debugger;
   point = vec3(point[0], point[1], point[2]);
   dir = vec3(dir[0], dir[1], dir[2]);
   a = vec3(a[0], a[1], a[2]);
@@ -14,8 +13,6 @@ export function ray_triangle_intersection(point, dir, a, b, c) {
   c = vec3(c[0], c[1], c[2]);
   let q = vec3(0,0,0);
 
-  // console.table({point, dir, a, b, c});
-  
   const ba = b.minus(a);
   const cb = c.minus(b);
   const ac = a.minus(c);
