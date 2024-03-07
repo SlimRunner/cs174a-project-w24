@@ -140,6 +140,8 @@ export class Ripple_Rampage extends Scene {
       }),
     };
 
+    this.on_click = this.on_click.bind(this);
+
     this.initial_camera_location = Mat4.look_at(
       vec3(0, 10, 20),
       vec3(0, 0, 0),
@@ -249,6 +251,15 @@ export class Ripple_Rampage extends Scene {
       );  
     }
   }
+
+  on_click({
+    position,
+    direction
+  }) {
+    // debugger;
+    console.table(position);
+    console.table(direction);
+  }
   
   display(context, program_state) {
     // display():  Called once per frame of animation.
@@ -272,7 +283,9 @@ export class Ripple_Rampage extends Scene {
     if (!context.scratchpad.controls) {
       // Add a movement controls panel to the page:
       this.children.push(
-        (context.scratchpad.controls = new Walk_Movement())
+        (context.scratchpad.controls = new Walk_Movement({
+          on_click: this.on_click
+        }))
       );
       // context.canvas.style.cursor = "none";
     }

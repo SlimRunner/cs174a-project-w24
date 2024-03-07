@@ -13,8 +13,10 @@ const {
 } = tiny;
 
 export class Walk_Movement extends Scene {
-  constructor() {
+  constructor(props) {
     super();
+
+    Object.assign(this, props);
 
     // this is slightly more verbose than the style used by
     // tiny-graphics, but it does not destroy intellisense by
@@ -125,7 +127,12 @@ export class Walk_Movement extends Scene {
     }
     canvas.addEventListener("mousedown", (e) => {
       e.preventDefault();
-      // code for interactivity here
+      if (document.pointerLockElement === canvas) {
+        this.on_click({
+          position: vec4(...this.position, 1),
+          direction: vec4(this.compass[0], this.compass[1], this.compass[2], 1),
+        });
+      }
     });
     document.addEventListener("mousemove", (e) => {
       e.preventDefault();
