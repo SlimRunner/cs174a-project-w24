@@ -977,7 +977,7 @@ export class Cloud_Shader extends Shader {
   
       float noise_value = 1.0 + 0.2* sin(animation_time); // Adjust this value to control the intensity of shaking
       vec3 mine = vec3 (random(position.xy), random(position.yz), random(position.zx));
-      vec3 quivered_position = position + normal * noise_value * 0.1 * random(position.xy);
+      vec3 quivered_position = position + normal * noise_value * 0.1 * random(position.xy) + 0.1*mine;
 
         uvs.x = mapRange(normal.x,-1.0,1.0,0.0,1.0);
         uvs.y = mapRange(normal.y,-1.0,1.0,0.0,1.0);
