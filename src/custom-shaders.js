@@ -993,9 +993,11 @@ export class Cloud_Shader extends Shader {
       ${this.shared_glsl_code()}
       
       uniform vec2 u_resolution; // viewport resolution
-      uniform float u_time; // time
+      uniform float animation_time; // time
+      
       
       float random(vec2 st) {
+        
         return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 5.0);
    
       }
@@ -1016,8 +1018,14 @@ export class Cloud_Shader extends Shader {
 
       void main() {
         vec2 uv = gl_FragCoord.xy;
-        
-        float density = noise(uv * 5.0 + u_time * 0.1);
+        float multiplier;
+
+        float distance_to_center = sqrt(pow(u-0.5,2.0) + pow(v-0.5,2.0));
+         if (distance_to_center > 0.3 && distance_to_center < 0.4) {
+            multiplier=5.0
+        }
+        float an_floor= floor(animation_time);
+        float density = noise(uv * 5.0 + 0.1*an_floor) + (0.01*an_floor) + 0.5;
        // density = 5.0;
         vec3 color = vec3(1.0) * density;
         
@@ -1055,6 +1063,8 @@ export class Cloud_Shader extends Shader {
     material = Object.assign({}, defaults, material);
 
     // this.send_material(context, gpu_addresses, material);
+    context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
+
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
