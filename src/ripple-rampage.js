@@ -7,6 +7,7 @@ import {
   Crosshair_Shader,
   Ripple_Shader,
   Complex_Textured,
+  Cloud_Shader,
 } from "./custom-shaders.js";
 import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
@@ -91,6 +92,12 @@ export class Ripple_Rampage extends Scene {
         diffusivity: 1,
         specularity: 0.4,
         color: color(1, 1, 1, 1),
+      }),
+      cloud: new Material(new Cloud_Shader(), {
+        ambient: 0,
+        diffusivity: 1,
+        specularity: 0.4,
+        color: hex_color("#000000")
       }),
       uv: new Material(new UV_Shader()),
       matte: new Material(new defs.Phong_Shader(), {
@@ -454,7 +461,7 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       this.groups.clickables[0].model_transform,
-      this.materials.uv
+      this.materials.cloud
     );
 
     this.shapes.small_square.draw(
