@@ -11,7 +11,8 @@ import {
 import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { ray_triangle_intersection } from "./utilities.js";
+import { check_scene_intersection } from "./utilities.js";
+import { strip_rotation } from "./math-extended.js";
 
 const {
   Vector,
@@ -39,9 +40,7 @@ export class Ripple_Rampage extends Scene {
     super();
 
     this.transfomations = {
-      cloud_mat: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
       large_floor_mat: Mat4.translation(0, 0, 0).times(Mat4.scale(100, 1, 100)),
-      large_dome: Mat4.translation(20, 30, 15).times(Mat4.scale(20, 20, 20)),
       click_at: Mat4.identity()
     }
 
@@ -151,21 +150,36 @@ export class Ripple_Rampage extends Scene {
 
     this.groups = {
       clickables: [
+        // {
+        //   id: "identifier",
+        //   object: this.shapes.identifier,
+        //   model_transform: Mat4,
+        //   capturable: boolean, // item follows you around when you click
+        //   interactive: boolean, // something happens when you click
+        //   max_distance: number, // when distance is larger click is denied
+        // },
         {
+          id: "cloud",
           object: this.shapes.cloud,
-          model_transform: this.transfomations.cloud_mat
+          model_transform: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+          capturable: true,
+          interactive: false,
+          max_distance: 15,
         },
         {
+          // this object is temporary
+          // to be replaced by walls
+          id: "large_floor",
           object: this.shapes.large_floor,
-          model_transform: this.transfomations.large_floor_mat
-        },
-        {
-          object: this.shapes.sphere,
-          model_transform: this.transfomations.large_dome
+          model_transform: this.transfomations.large_floor_mat,
+          capturable: false,
+          interactive: true,
+          max_distance: Infinity,
         },
       ]
     }
 
+    this.captured_object = null;
     this.on_click = this.on_click.bind(this);
 
     this.initial_camera_location = Mat4.look_at(
@@ -279,41 +293,36 @@ export class Ripple_Rampage extends Scene {
   }
 
   on_click({
+    event,
     position,
-    direction
+    direction,
   }) {
-    const GP = this.groups;
-    let inter_point = null, new_point = null;
-    let inter_dist = Infinity, new_dist = 0;
-    let tpos, arr_alias;
-
-    for (const clickable of GP.clickables) {
-      for (let i = 0; i < clickable.object.indices.length; i += 3) {
-        arr_alias = clickable.object.arrays;
-        tpos = [
-          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i]], 1)),
-          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i + 1]], 1)),
-          clickable.model_transform.times(vec4(...arr_alias.position[clickable.object.indices[i + 2]], 1)),
-        ]
-        new_point = ray_triangle_intersection(
-          position, direction,
-          tpos[0],
-          tpos[1],
-          tpos[2]
-        );
-        if (new_point) {
-          new_dist = new_point.minus(position).norm();
-          if (new_dist < inter_dist) {
-            inter_point = new_point;
-            inter_dist = new_dist;
-          }
-        }
-      }
+    if (this.captured_object) {
+      // let item go
+      this.captured_object = null;
+      return;
     }
-    if (inter_point) {
-      this.transfomations.click_at[0][3] = inter_point[0];
-      this.transfomations.click_at[1][3] = inter_point[1];
-      this.transfomations.click_at[2][3] = inter_point[2];
+
+    const {
+      point: intersection,
+      mesh_index: mesh_index,
+      distance: distance
+    } = check_scene_intersection(position, direction, this.groups.clickables);
+    
+    if (intersection) {
+      this.transfomations.click_at[0][3] = intersection[0];
+      this.transfomations.click_at[1][3] = intersection[1];
+      this.transfomations.click_at[2][3] = intersection[2];
+
+      const is_capturable = this.groups.clickables[mesh_index].capturable;
+      const is_in_range = distance <= (
+        this.groups.clickables[mesh_index].max_distance ??
+        Infinity
+      );
+
+      if (is_capturable && is_in_range) {
+        this.captured_object = this.groups.clickables[mesh_index];
+      }
     }
   }
   
@@ -379,6 +388,11 @@ export class Ripple_Rampage extends Scene {
       [        0, 0,         0,         1],
     ]);
 
+    // TODO: prevent distortion when looking up or down
+    if (this.captured_object && this.captured_object.capturable) {
+      this.captured_object.model_transform = cam_lead.times(Mat4.translation(0, 0, -3)).map((x, i) => Vector.from(this.captured_object.model_transform[i]).mix(x, 0.1))
+    }
+
     // the following box ignores the depth buffer
     GL.disable(GL.DEPTH_TEST);
     this.shapes.skybox.draw(
@@ -414,8 +428,7 @@ export class Ripple_Rampage extends Scene {
     this.shapes.cloud.draw(
       context,
       program_state,
-      // cam_lead.times(Mat4.translation(0, 0, -3)),
-      this.transfomations.cloud_mat,
+      this.groups.clickables[0].model_transform,
       this.materials.uv
     );
 
@@ -436,19 +449,13 @@ export class Ripple_Rampage extends Scene {
         ,
       this.materials.stone_mat
     );
-
+    
+    // how to place something where you clicked
     this.shapes.sphere.draw(
       context,
       program_state,
       this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25)),
       this.materials.matte
-    )
-    
-    this.shapes.sphere.draw(
-      context,
-      program_state,
-      this.transfomations.large_dome,
-      this.materials.uv
     )
     
     this.shapes.water_surface.draw(

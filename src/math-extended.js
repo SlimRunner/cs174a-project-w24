@@ -128,3 +128,12 @@ export function transform_vector(mat, vec) {
     return res;
   }
 }
+
+export function strip_rotation(mat) {
+  return Matrix.of(
+    [1, 0, 0, mat[0][3]],
+    [0, 1, 0, mat[1][3]],
+    [0, 0, 1, mat[2][3]],
+    [0, 0, 0, 1],
+  );
+}

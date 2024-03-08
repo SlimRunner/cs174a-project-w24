@@ -129,6 +129,7 @@ export class Walk_Movement extends Scene {
       e.preventDefault();
       if (document.pointerLockElement === canvas) {
         this.on_click({
+          event: e,
           position: vec4(...this.position, 1),
           direction: vec4(this.compass[0], this.compass[1], this.compass[2], 1),
         });
