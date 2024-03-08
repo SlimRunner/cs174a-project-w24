@@ -243,6 +243,7 @@ export class Ripple_Rampage extends Scene {
         context,
         program_state,
         this.rippleLoc[i],
+        // this.materials.uv
         this.rippleMaterial
       );  
     }
@@ -405,6 +406,30 @@ export class Ripple_Rampage extends Scene {
     
     // =========================================================
     // Main scene is rendered here
+
+    this.shapes.large_floor.draw(
+      context,
+      program_state,
+      // model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
+      this.transfomations.large_floor_mat,
+      this.materials.grass_mat
+    );
+    
+    this.shapes.water_surface.draw(
+      context,
+      program_state,
+      this.lakeTransform,
+      this.materials.matte.override(hex_color("#00FFFF"))
+    );
+    
+    GL.disable(GL.DEPTH_TEST);
+    if (this.addRippleButton){
+      this.addRipple(t, Mat4.translation(0, 0, 1));
+      this.addRippleButton = false;
+    }
+    this.displayRipples(context, program_state)
+    this.cleanRipples(t);
+    GL.enable(GL.DEPTH_TEST);
     
     this.shapes.mountains[0].draw(
       context,
@@ -432,14 +457,6 @@ export class Ripple_Rampage extends Scene {
       this.materials.uv
     );
 
-    this.shapes.large_floor.draw(
-      context,
-      program_state,
-      // model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
-      this.transfomations.large_floor_mat,
-      this.materials.grass_mat
-    );
-
     this.shapes.small_square.draw(
       context,
       program_state,
@@ -457,22 +474,6 @@ export class Ripple_Rampage extends Scene {
       this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25)),
       this.materials.matte
     )
-    
-    this.shapes.water_surface.draw(
-      context,
-      program_state,
-      this.lakeTransform,
-      this.materials.matte.override(hex_color("#00FFFF"))
-    );
-    
-    GL.disable(GL.DEPTH_TEST);
-    if (this.addRippleButton){
-      this.addRipple(t, Mat4.translation(0, 0, 1));
-      this.addRippleButton = false;
-    }
-    this.displayRipples(context, program_state)
-    this.cleanRipples(t);
-    GL.enable(GL.DEPTH_TEST);
     
     if (this.addRainButton){
       this.addRaindrop(Mat4.translation(0, 0, 0));
