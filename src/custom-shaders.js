@@ -706,6 +706,11 @@ export class Ripple_Shader extends Shader {
 
     constructor(){
         super();
+        this.birth = 0;
+    }
+
+    setBirth(time){
+      this.birth = time;
     }
 
     shared_glsl_code() {
@@ -742,8 +747,8 @@ export class Ripple_Shader extends Shader {
         // TODO:  Complete the main function of the fragment shader (Extra Credit Part II).
         return this.shared_glsl_code() + `
         void main(){
-          float relativeTime = 1.0*(time-birth+0.25);
-          float dist = distance(point_position.xyz, center.xyz);
+          float relativeTime = 2.0*(time-birth+0.25);
+          float dist = 8.0*distance(point_position.xyz, center.xyz);
           float decay = 1.0 / pow(10.0, (1.0/relativeTime));
           float scale = wave_size * pow(decay, dist) / relativeTime;
           float sinusoid = sin((wave_period * (dist - relativeTime/2.0))/relativeTime);
@@ -769,7 +774,7 @@ export class Ripple_Shader extends Shader {
       gl.uniform4fv(gpu.shape_color, material.color);
       gl.uniform1f(gpu.wave_size, material.size);
       gl.uniform1f(gpu.wave_period, material.period);
-      gl.uniform1f(gpu.birth, material.birth);
+      gl.uniform1f(gpu.birth, this.birth);
     }
   
     send_gpu_state(gl, gpu, gpu_state, model_transform) {
@@ -814,6 +819,7 @@ export class Complex_Textured extends Shader {
       // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
       varying vec3 N, vertex_worldspace;
       
+      // might implement this later (Fresnel): https://stackoverflow.com/a/9901654
       // ***** PHONG SHADING HAPPENS HERE: *****                                       
       vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace, vec3 diffuse_color, float specular_intensity ){
         // phong_model_lights():  Add up the lights' contributions.

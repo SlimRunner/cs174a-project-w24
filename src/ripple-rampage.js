@@ -9,10 +9,11 @@ import {
   Complex_Textured,
   Flat_Color_Shader,
 } from "./custom-shaders.js";
-import { Square } from "./custom-shapes.js";
+import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { lerp } from "./math-extended.js";
+import { check_scene_intersection } from "./utilities.js";
+import { lerp, strip_rotation } from "./math-extended.js";
 
 const {
   Vector,
@@ -42,6 +43,11 @@ export class Ripple_Rampage extends Scene {
     this.fov = 60;
     this.fov_target = 60;
 
+    this.transfomations = {
+      large_floor_mat: Mat4.translation(0, 0, 0).times(Mat4.scale(100, 1, 100)),
+      click_at: Mat4.identity()
+    }
+
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
       light_src: new defs.Subdivision_Sphere(2),
@@ -49,7 +55,8 @@ export class Ripple_Rampage extends Scene {
       sphere: new Flat_Sphere(3),
       large_floor: new Square(),
       small_square: new Square(),
-      water_surface: new Square(),
+      water_surface: new Lake_Mesh(),
+      raindrop: new defs.Subdivision_Sphere(4),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),
       mountains: [
@@ -57,6 +64,7 @@ export class Ripple_Rampage extends Scene {
         new Shape_From_File("objects/01-mountain.obj"),
         new Shape_From_File("objects/02-mountain.obj"),
       ],
+      cloud: new Shape_From_File("objects/cloud-simple.obj"),
     };
     this.shapes.large_floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
     this.shapes.small_square.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(4)));
@@ -148,6 +156,40 @@ export class Ripple_Rampage extends Scene {
       }),
     };
 
+    this.groups = {
+      clickables: [
+        // {
+        //   id: "identifier",
+        //   object: this.shapes.identifier,
+        //   model_transform: Mat4,
+        //   capturable: boolean, // item follows you around when you click
+        //   interactive: boolean, // something happens when you click
+        //   max_distance: number, // when distance is larger click is denied
+        // },
+        {
+          id: "cloud",
+          object: this.shapes.cloud,
+          model_transform: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+          capturable: true,
+          interactive: false,
+          max_distance: 15,
+        },
+        {
+          // this object is temporary
+          // to be replaced by walls
+          id: "large_floor",
+          object: this.shapes.large_floor,
+          model_transform: this.transfomations.large_floor_mat,
+          capturable: false,
+          interactive: true,
+          max_distance: Infinity,
+        },
+      ]
+    }
+
+    this.captured_object = null;
+    this.on_click = this.on_click.bind(this);
+
     this.initial_camera_location = Mat4.look_at(
       vec3(0, 10, 20),
       vec3(0, 0, 0),
@@ -156,7 +198,16 @@ export class Ripple_Rampage extends Scene {
 
     this.addRippleButton = false;
     this.ripplesBirth = [];
-    this.rippleShaders = [];
+    this.rippleLoc = [];
+    this.rippleShader = new Ripple_Shader();
+    this.rippleMaterial = new Material(this.rippleShader, {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0});
+    
+    this.addRainButton = false;
+    this.rainVelocity = [];
+    this.rainTransform = [];
+
+    
+    this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1, 1, 1));
   }
 
   add_mouse_controls(canvas) {
@@ -179,6 +230,8 @@ export class Ripple_Rampage extends Scene {
     // );
     this.key_triggered_button("Add Ripple", ["Shift", "R"], () => this.addRippleButton = true);
     this.new_line();
+    this.key_triggered_button("Add Raindrop", ["Shift", "W"], () => this.addRainButton = true);
+    this.new_line();
   }
 
   cleanRipples(time){
@@ -189,7 +242,7 @@ export class Ripple_Rampage extends Scene {
     while (notClean && this.ripplesBirth.length > 0){
       if ((this.ripplesBirth[0] + 3.0) < time){
         this.ripplesBirth.shift();
-        this.rippleShaders.shift();
+        this.rippleLoc.shift();
       }
       else{
         notClean = false;
@@ -197,21 +250,99 @@ export class Ripple_Rampage extends Scene {
     }
   }
 
-  addRipple(time){
+  addRipple(time, loc){
     this.ripplesBirth.push(time);
-    this.rippleShaders.push(new Material(new Ripple_Shader(), {color: hex_color("#ADD8E6"), size: 2.0, period: 10.0, birth: time}));
-    console.log(this.ripplesBirth);
+    this.rippleLoc.push(loc);
   }
 
   displayRipples(context, program_state){
-    for (let i = 0; i < this.rippleShaders.length; i++) {
-      let model_transform = Mat4.translation(0, 0.02, 0).times(Mat4.scale(4, 1, 4));
+    for (let i = 0; i < this.ripplesBirth.length; i++) {
+      this.rippleShader.setBirth(this.ripplesBirth[i]);
       this.shapes.water_surface.draw(
         context,
         program_state,
-        model_transform,
-        this.rippleShaders[i]
+        this.rippleLoc[i],
+        // this.materials.uv
+        this.rippleMaterial
       );  
+    }
+  }
+
+  cleanRaindrops(time){
+    if (this.rainTransform.length === 0){
+      return;
+    }
+    let notClean = true;
+    while (notClean && this.rainTransform.length > 0){
+      let rainx = this.rainTransform[0][0][3];
+      let rainy = this.rainTransform[0][1][3];
+      let rainz = this.rainTransform[0][2][3];
+      if (rainy < 0.0){
+        this.rainVelocity.shift();
+        this.rainTransform.shift();
+        let insideShape = this.shapes.water_surface.isInside(rainx, rainz);
+        if(insideShape){
+          this.addRipple(time, Mat4.translation(rainx, 0, rainz));
+          this.lakeTransform[0][0] = this.lakeTransform[0][0] + 0.01;
+          this.lakeTransform[2][2] = this.lakeTransform[2][2] + 0.01;
+        }
+      }
+      else{
+        notClean = false;
+      }
+    }
+  }
+
+  addRaindrop(loc){
+    this.rainTransform.push(loc.times(Mat4.translation(0, 2, 0).times(Mat4.scale(0.01, 0.08, 0.01))));
+    this.rainVelocity.push(7);
+  }
+
+  displayRaindrops(context, program_state){
+    for (let i = 0; i < this.rainTransform.length; i++) {
+      let dt = program_state.animation_delta_time / 1000;
+      this.rainVelocity[i] = this.rainVelocity[i] + 7*9.8 * dt;
+      this.rainTransform[i] = this.rainTransform[i].times(Mat4.translation(0, -this.rainVelocity[i]*dt, 0));
+      this.shapes.raindrop.draw(
+        context,
+        program_state,
+        this.rainTransform[i],
+        this.materials.ambient_phong.override(hex_color("#FFFFFF"))
+      );  
+    }
+  }
+
+  on_click({
+    event,
+    position,
+    direction,
+  }) {
+    if (this.captured_object) {
+      // let item go
+      this.captured_object = null;
+      return;
+    }
+
+    const {
+      point: intersection,
+      mesh_index: mesh_index,
+      distance: distance
+    } = check_scene_intersection(position, direction, this.groups.clickables);
+    
+    if (intersection) {
+      this.transfomations.click_at[0][3] = intersection[0];
+      this.transfomations.click_at[1][3] = intersection[1];
+      this.transfomations.click_at[2][3] = intersection[2];
+
+      const is_capturable = this.groups.clickables[mesh_index].capturable;
+      const is_in_range = distance <= (
+        this.groups.clickables[mesh_index].max_distance ??
+        Infinity
+      );
+
+      if (is_capturable && is_in_range) {
+        this.captured_object = this.groups.clickables[mesh_index];
+      }
     }
   }
   
@@ -239,6 +370,7 @@ export class Ripple_Rampage extends Scene {
       // Add a movement controls panel to the page:
       this.children.push(
         (context.scratchpad.controls = new Walk_Movement({
+          on_click: this.on_click,
           get_fov: () => this.fov
         }))
       );
@@ -257,8 +389,7 @@ export class Ripple_Rampage extends Scene {
 
     let model_transform = Mat4.identity();
 
-    const ripple_transform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(8, 1, 8));
-
+    this.shapes.water_surface.setScale(this.lakeTransform);
     // The parameters of the Light are: position, color, size
     program_state.lights = [
       new Light(vec4(-5, 300, -5, 1), color(1,1,1,1), 10000),
@@ -268,11 +399,22 @@ export class Ripple_Rampage extends Scene {
     // =========================================================
     // Drawing environment elements (distant)
     // Be careful of the order
-  
-    const cam_loc = program_state
-      .camera_transform
+    
+    const CMT = program_state.camera_transform;
+    const cam_loc = CMT
       .sub_block([0, 3], [3, 4])
       .flat();
+    const cam_lead = Mat4.from([
+      [CMT[0][0], 0, CMT[0][2], CMT[0][3]    ],
+      [        0, 1,         0, CMT[1][3] + 1],
+      [CMT[2][0], 0, CMT[2][2], CMT[2][3]    ],
+      [        0, 0,         0,         1],
+    ]);
+
+    // TODO: prevent distortion when looking up or down
+    if (this.captured_object && this.captured_object.capturable) {
+      this.captured_object.model_transform = cam_lead.times(Mat4.translation(0, 0, -3)).map((x, i) => Vector.from(this.captured_object.model_transform[i]).mix(x, 0.1))
+    }
 
     // the following box ignores the depth buffer
     GL.disable(GL.DEPTH_TEST);
@@ -286,6 +428,30 @@ export class Ripple_Rampage extends Scene {
     
     // =========================================================
     // Main scene is rendered here
+
+    this.shapes.large_floor.draw(
+      context,
+      program_state,
+      // model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
+      this.transfomations.large_floor_mat,
+      this.materials.grass_mat
+    );
+    
+    this.shapes.water_surface.draw(
+      context,
+      program_state,
+      this.lakeTransform,
+      this.materials.matte.override(hex_color("#00FFFF"))
+    );
+    
+    GL.disable(GL.DEPTH_TEST);
+    if (this.addRippleButton){
+      this.addRipple(t, Mat4.translation(0, 0, 1));
+      this.addRippleButton = false;
+    }
+    this.displayRipples(context, program_state)
+    this.cleanRipples(t);
+    GL.enable(GL.DEPTH_TEST);
     
     this.shapes.mountains[0].draw(
       context,
@@ -307,44 +473,37 @@ export class Ripple_Rampage extends Scene {
       this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
     );
 
-    this.shapes.sphere.draw(
+    this.shapes.cloud.draw(
       context,
       program_state,
-      model_transform.times(Mat4.translation(0, 3, 0)),
+      this.groups.clickables[0].model_transform,
       this.materials.uv
-    );
-
-    this.shapes.large_floor.draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
-      this.materials.grass_mat
     );
 
     this.shapes.small_square.draw(
       context,
       program_state,
       model_transform
-        .times(Mat4.translation(16, 0.01, 0))
+        .times(Mat4.translation(18, 0.01, 0))
         .times(Mat4.scale(-8, 0.01, 8))
         ,
       this.materials.stone_mat
     );
     
-    this.shapes.water_surface.draw(
+    // how to place something where you clicked
+    this.shapes.sphere.draw(
       context,
       program_state,
-      model_transform.times(ripple_transform),
-      this.materials.plastic.override(hex_color("#00FFFF"))
-    );
-
-    if (this.addRippleButton){
-      this.addRipple(t);
-      this.addRippleButton = false;
+      model_transform.times(this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25))),
+      this.materials.plastic
+    )
+    
+    if (this.addRainButton){
+      this.addRaindrop(Mat4.translation(0, 0, 0));
+      this.addRainButton = false;
     }
-    this.displayRipples(context, program_state)
-    this.cleanRipples(t);
-
+    this.displayRaindrops(context, program_state)
+    this.cleanRaindrops(t);
     for (const light of program_state.lights){
       this.shapes.light_src.draw(
         context,
