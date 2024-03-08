@@ -275,7 +275,7 @@ export class Ripple_Rampage extends Scene {
   }
 
   addRaindrop(loc){
-    this.rainTransform.push(loc.times(Mat4.translation(0, 2, 0).times(Mat4.scale(0.01, 0.08, 0.01))));
+    this.rainTransform.push(loc.times(Mat4.scale(0.01, 0.08, 0.01)));
     this.rainVelocity.push(7);
   }
 
@@ -476,7 +476,7 @@ export class Ripple_Rampage extends Scene {
     )
     
     if (this.addRainButton){
-      this.addRaindrop(Mat4.translation(0, 0, 0));
+      this.addRaindrop(strip_rotation(this.groups.clickables[0].model_transform));
       this.addRainButton = false;
     }
     this.displayRaindrops(context, program_state)
