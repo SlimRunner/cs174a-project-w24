@@ -965,13 +965,33 @@ export class Cloud_Shader extends Shader {
       uniform mat4 projection;
       uniform mat4 view;
       uniform mat4 model;
+      uniform float animation_time;
+      float random(vec2 st) {
+        
+        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 10.0);
+   
+      }
 
       void main() {
+
+  
+      float noise_value = 1.0 + 0.2* sin(animation_time); // Adjust this value to control the intensity of shaking
+      vec3 mine = vec3 (random(position.xy), random(position.yz), random(position.zx));
+      vec3 quivered_position = position + normal * noise_value * 0.1 * random(position.xy);
+
         uvs.x = mapRange(normal.x,-1.0,1.0,0.0,1.0);
         uvs.y = mapRange(normal.y,-1.0,1.0,0.0,1.0);
         uvs.z = mapRange(normal.z,0.0,-1.0,0.5,1.0);
+
+        // Transform the quivered position to view space
+   vec4 p4 = vec4(quivered_position, 1.0);
+    // mat4 modelViewMatrix = view * model;
+  //  vec4 viewModelPosition = modelViewMatrix * p4;
+
+
         // uvs = normal;
-        vec4 p4 = vec4(position, 1.0);
+    //    vec4 p4 = vec4(position, 1.0);
+        
         //determine view space p4
         mat4 modelViewMatrix = view * model;
         vec4 viewModelPosition = modelViewMatrix * p4;
@@ -1030,6 +1050,7 @@ export class Cloud_Shader extends Shader {
         //}
         float an_floor= floor(animation_time);
         float density = noise(uv * 5.0 + 0.1*multiplier) + (0.01*multiplier) ;
+        
        // density = 5.0;
         vec3 color = vec3(1.0) * density;
         
