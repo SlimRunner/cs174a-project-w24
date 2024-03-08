@@ -12,6 +12,7 @@ import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 import { check_scene_intersection } from "./utilities.js";
+import { strip_rotation } from "./math-extended.js";
 
 const {
   Vector,
@@ -39,9 +40,7 @@ export class Ripple_Rampage extends Scene {
     super();
 
     this.transfomations = {
-      cloud_mat: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
       large_floor_mat: Mat4.translation(0, 0, 0).times(Mat4.scale(100, 1, 100)),
-      large_dome: Mat4.translation(20, 30, 15).times(Mat4.scale(20, 20, 20)),
       click_at: Mat4.identity()
     }
 
@@ -153,12 +152,11 @@ export class Ripple_Rampage extends Scene {
       clickables: [
         {
           object: this.shapes.cloud,
-          model_transform: this.transfomations.cloud_mat
+          model_transform: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+          interactive: true,
         },
-        {
-          object: this.shapes.large_floor,
-          model_transform: this.transfomations.large_floor_mat
-        },
+      ]
+    }
 
     this.captured_object = null;
     this.on_click = this.on_click.bind(this);
@@ -359,6 +357,11 @@ export class Ripple_Rampage extends Scene {
       [        0, 0,         0,         1],
     ]);
 
+    // TODO: prevent distortion when looking up or down
+    if (this.captured_object && this.captured_object.interactive) {
+      this.captured_object.model_transform = cam_lead.times(Mat4.translation(0, 0, -3)).map((x, i) => Vector.from(this.captured_object.model_transform[i]).mix(x, 0.1))
+    }
+
     // the following box ignores the depth buffer
     GL.disable(GL.DEPTH_TEST);
     this.shapes.skybox.draw(
@@ -394,8 +397,7 @@ export class Ripple_Rampage extends Scene {
     this.shapes.cloud.draw(
       context,
       program_state,
-      // cam_lead.times(Mat4.translation(0, 0, -3)),
-      this.transfomations.cloud_mat,
+      this.groups.clickables[0].model_transform,
       this.materials.uv
     );
 
