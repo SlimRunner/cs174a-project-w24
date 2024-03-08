@@ -13,8 +13,10 @@ const {
 } = tiny;
 
 export class Walk_Movement extends Scene {
-  constructor() {
+  constructor(props) {
     super();
+
+    Object.assign(this, props);
 
     // this is slightly more verbose than the style used by
     // tiny-graphics, but it does not destroy intellisense by
@@ -125,7 +127,13 @@ export class Walk_Movement extends Scene {
     }
     canvas.addEventListener("mousedown", (e) => {
       e.preventDefault();
-      // code for interactivity here
+      if (document.pointerLockElement === canvas) {
+        this.on_click({
+          event: e,
+          position: vec4(...this.position, 1),
+          direction: vec4(this.compass[0], this.compass[1], this.compass[2], 1),
+        });
+      }
     });
     document.addEventListener("mousemove", (e) => {
       e.preventDefault();
@@ -177,12 +185,17 @@ export class Walk_Movement extends Scene {
     this.new_line();
     // The facing directions are surprisingly affected by the left hand rule:
     this.live_string(
-      (box) =>
-        (box.textContent =
-          "- Facing: " +
-          ((this.compass[0] > 0 ? "West " : "East ") +
-            (this.compass[1] > 0 ? "Down " : "Up ") +
-            (this.compass[2] > 0 ? "North" : "South")))
+      (box) => {
+        const rad2deg = 180 / Math.PI;
+        const elevation = Math.atan2(this.compass[1], Math.hypot(...this.compass)) * rad2deg * 2;
+        let compass = Math.atan2(this.compass[0], this.compass[2]) * rad2deg;
+        const foo = Array.from(this.compass).map(e => e.toFixed(2));
+        if (compass < 0) compass = 360 + compass;
+        box.textContent =
+          `Facing: ${compass.toFixed(2)}\n` + 
+          `Elevation: ${elevation.toFixed(2)}`;
+        // box.textContent = `${foo[0]}, ${foo[1]}, ${foo[2]}`
+      }
     );
     this.new_line();
     this.new_line();
@@ -309,7 +322,8 @@ export class Walk_Movement extends Scene {
     this.position.add_by(this.momentum_vector.times(this.speed * dt));
     this.position[1] = this.height;
 
-    state.set_camera(look_around_matrix.times(custom_look_at(this.position, heading, this.up_axis)));
+    const final_look_at_matrix = look_around_matrix.times(custom_look_at(this.position, heading, this.up_axis));
+    state.set_camera(final_look_at_matrix);
   }
 
   display(
@@ -329,6 +343,6 @@ export class Walk_Movement extends Scene {
 
     this.walk(graphics_state, dt);
 
-    this.compass = this.inverse().times(vec4(0, 0, 1, 0));
+    this.compass = this.matrix().times(vec4(0, 0, -1, 0));
   }
 }

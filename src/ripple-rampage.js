@@ -11,6 +11,8 @@ import {
 import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
+import { check_scene_intersection } from "./utilities.js";
+import { strip_rotation } from "./math-extended.js";
 
 const {
   Vector,
@@ -37,6 +39,11 @@ export class Ripple_Rampage extends Scene {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
 
+    this.transfomations = {
+      large_floor_mat: Mat4.translation(0, 0, 0).times(Mat4.scale(100, 1, 100)),
+      click_at: Mat4.identity()
+    }
+
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
       cube: new defs.Cube(),
@@ -52,6 +59,7 @@ export class Ripple_Rampage extends Scene {
         new Shape_From_File("objects/01-mountain.obj"),
         new Shape_From_File("objects/02-mountain.obj"),
       ],
+      cloud: new Shape_From_File("objects/cloud-simple.obj"),
     };
     this.shapes.large_floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
     this.shapes.small_square.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(4)));
@@ -139,6 +147,40 @@ export class Ripple_Rampage extends Scene {
         ),
       }),
     };
+
+    this.groups = {
+      clickables: [
+        // {
+        //   id: "identifier",
+        //   object: this.shapes.identifier,
+        //   model_transform: Mat4,
+        //   capturable: boolean, // item follows you around when you click
+        //   interactive: boolean, // something happens when you click
+        //   max_distance: number, // when distance is larger click is denied
+        // },
+        {
+          id: "cloud",
+          object: this.shapes.cloud,
+          model_transform: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+          capturable: true,
+          interactive: false,
+          max_distance: 15,
+        },
+        {
+          // this object is temporary
+          // to be replaced by walls
+          id: "large_floor",
+          object: this.shapes.large_floor,
+          model_transform: this.transfomations.large_floor_mat,
+          capturable: false,
+          interactive: true,
+          max_distance: Infinity,
+        },
+      ]
+    }
+
+    this.captured_object = null;
+    this.on_click = this.on_click.bind(this);
 
     this.initial_camera_location = Mat4.look_at(
       vec3(0, 10, 20),
@@ -249,6 +291,40 @@ export class Ripple_Rampage extends Scene {
       );  
     }
   }
+
+  on_click({
+    event,
+    position,
+    direction,
+  }) {
+    if (this.captured_object) {
+      // let item go
+      this.captured_object = null;
+      return;
+    }
+
+    const {
+      point: intersection,
+      mesh_index: mesh_index,
+      distance: distance
+    } = check_scene_intersection(position, direction, this.groups.clickables);
+    
+    if (intersection) {
+      this.transfomations.click_at[0][3] = intersection[0];
+      this.transfomations.click_at[1][3] = intersection[1];
+      this.transfomations.click_at[2][3] = intersection[2];
+
+      const is_capturable = this.groups.clickables[mesh_index].capturable;
+      const is_in_range = distance <= (
+        this.groups.clickables[mesh_index].max_distance ??
+        Infinity
+      );
+
+      if (is_capturable && is_in_range) {
+        this.captured_object = this.groups.clickables[mesh_index];
+      }
+    }
+  }
   
   display(context, program_state) {
     // display():  Called once per frame of animation.
@@ -272,7 +348,9 @@ export class Ripple_Rampage extends Scene {
     if (!context.scratchpad.controls) {
       // Add a movement controls panel to the page:
       this.children.push(
-        (context.scratchpad.controls = new Walk_Movement())
+        (context.scratchpad.controls = new Walk_Movement({
+          on_click: this.on_click
+        }))
       );
       // context.canvas.style.cursor = "none";
     }
@@ -298,11 +376,22 @@ export class Ripple_Rampage extends Scene {
     // =========================================================
     // Drawing environment elements (distant)
     // Be careful of the order
-  
-    const cam_loc = program_state
-      .camera_transform
+    
+    const CMT = program_state.camera_transform;
+    const cam_loc = CMT
       .sub_block([0, 3], [3, 4])
       .flat();
+    const cam_lead = Mat4.from([
+      [CMT[0][0], 0, CMT[0][2], CMT[0][3]    ],
+      [        0, 1,         0, CMT[1][3] + 1],
+      [CMT[2][0], 0, CMT[2][2], CMT[2][3]    ],
+      [        0, 0,         0,         1],
+    ]);
+
+    // TODO: prevent distortion when looking up or down
+    if (this.captured_object && this.captured_object.capturable) {
+      this.captured_object.model_transform = cam_lead.times(Mat4.translation(0, 0, -3)).map((x, i) => Vector.from(this.captured_object.model_transform[i]).mix(x, 0.1))
+    }
 
     // the following box ignores the depth buffer
     GL.disable(GL.DEPTH_TEST);
@@ -336,17 +425,18 @@ export class Ripple_Rampage extends Scene {
       this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
     );
 
-    this.shapes.sphere.draw(
+    this.shapes.cloud.draw(
       context,
       program_state,
-      model_transform.times(Mat4.translation(0, 3, 0)),
+      this.groups.clickables[0].model_transform,
       this.materials.uv
     );
 
     this.shapes.large_floor.draw(
       context,
       program_state,
-      model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
+      // model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
+      this.transfomations.large_floor_mat,
       this.materials.grass_mat
     );
 
@@ -359,6 +449,14 @@ export class Ripple_Rampage extends Scene {
         ,
       this.materials.stone_mat
     );
+    
+    // how to place something where you clicked
+    this.shapes.sphere.draw(
+      context,
+      program_state,
+      this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25)),
+      this.materials.matte
+    )
     
     this.shapes.water_surface.draw(
       context,

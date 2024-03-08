@@ -747,6 +747,7 @@ const Graphics_Card_Object = tiny.Graphics_Card_Object =
             // an existing GPU context and merely overwriting parts of itself.
             if (!existing_instance) {
                 Graphics_Card_Object.idiot_alarm |= 0;     // Start a program-wide counter.
+                console.log(`count gpu ins: ${Graphics_Card_Object.idiot_alarm}`);
                 if (Graphics_Card_Object.idiot_alarm++ > 200)
                     throw `Error: You are sending a lot of object definitions to the GPU, probably by mistake!  
                     Many of them are likely duplicates, which you don't want since sending each one is very slow.  
