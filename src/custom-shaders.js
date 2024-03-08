@@ -1018,14 +1018,18 @@ export class Cloud_Shader extends Shader {
 
       void main() {
         vec2 uv = gl_FragCoord.xy;
-        float multiplier;
+        float u= gl_FragCoord.x;
+        float v= gl_FragCoord.y;
 
-        float distance_to_center = sqrt(pow(u-0.5,2.0) + pow(v-0.5,2.0));
-         if (distance_to_center > 0.3 && distance_to_center < 0.4) {
-            multiplier=5.0
-        }
+        float multiplier=1.0;
+
+       float distance_to_center = sqrt(pow(u-0.5,2.0) + pow(v-0.5,2.0));
+       multiplier=distance_to_center*0.1;
+        // if (distance_to_center > 0.3 && distance_to_center < 0.4) {
+        //    multiplier=5.0
+        //}
         float an_floor= floor(animation_time);
-        float density = noise(uv * 5.0 + 0.1*an_floor) + (0.01*an_floor) + 0.5;
+        float density = noise(uv * 5.0 + 0.1*multiplier) + (0.01*multiplier) ;
        // density = 5.0;
         vec3 color = vec3(1.0) * density;
         
