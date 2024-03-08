@@ -150,10 +150,31 @@ export class Ripple_Rampage extends Scene {
 
     this.groups = {
       clickables: [
+        // {
+        //   id: "identifier",
+        //   object: this.shapes.identifier,
+        //   model_transform: Mat4,
+        //   capturable: boolean, // item follows you around when you click
+        //   interactive: boolean, // something happens when you click
+        //   max_distance: number, // when distance is larger click is denied
+        // },
         {
+          id: "cloud",
           object: this.shapes.cloud,
           model_transform: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+          capturable: true,
+          interactive: false,
+          max_distance: 15,
+        },
+        {
+          // this object is temporary
+          // to be replaced by walls
+          id: "large_floor",
+          object: this.shapes.large_floor,
+          model_transform: this.transfomations.large_floor_mat,
+          capturable: false,
           interactive: true,
+          max_distance: Infinity,
         },
       ]
     }
@@ -272,8 +293,9 @@ export class Ripple_Rampage extends Scene {
   }
 
   on_click({
+    event,
     position,
-    direction
+    direction,
   }) {
     if (this.captured_object) {
       // let item go
@@ -283,7 +305,8 @@ export class Ripple_Rampage extends Scene {
 
     const {
       point: intersection,
-      mesh_index: mesh_index
+      mesh_index: mesh_index,
+      distance: distance
     } = check_scene_intersection(position, direction, this.groups.clickables);
     
     if (intersection) {
@@ -291,7 +314,15 @@ export class Ripple_Rampage extends Scene {
       this.transfomations.click_at[1][3] = intersection[1];
       this.transfomations.click_at[2][3] = intersection[2];
 
-      this.captured_object = this.groups.clickables[mesh_index];
+      const is_capturable = this.groups.clickables[mesh_index].capturable;
+      const is_in_range = distance <= (
+        this.groups.clickables[mesh_index].max_distance ??
+        Infinity
+      );
+
+      if (is_capturable && is_in_range) {
+        this.captured_object = this.groups.clickables[mesh_index];
+      }
     }
   }
   
@@ -358,7 +389,7 @@ export class Ripple_Rampage extends Scene {
     ]);
 
     // TODO: prevent distortion when looking up or down
-    if (this.captured_object && this.captured_object.interactive) {
+    if (this.captured_object && this.captured_object.capturable) {
       this.captured_object.model_transform = cam_lead.times(Mat4.translation(0, 0, -3)).map((x, i) => Vector.from(this.captured_object.model_transform[i]).mix(x, 0.1))
     }
 
@@ -418,7 +449,8 @@ export class Ripple_Rampage extends Scene {
         ,
       this.materials.stone_mat
     );
-
+    
+    // how to place something where you clicked
     this.shapes.sphere.draw(
       context,
       program_state,
