@@ -127,7 +127,7 @@ export function check_scene_intersection(pos, dir, meshes) {
 
 // Implemented with the visual help of Desmos
 // https://www.desmos.com/calculator/mzhbhtmfjc
-export function make_maze(size_x, size_y, cutout_radius) {
+export function make_maze(size_x, size_y, cutout_radius = 0) {
   // size expresses the size of generation cells not actual size, For
   // example, a 1x1 turns into a 3x3 because that's how many neigboring
   // cells you need for the backtracking algorithm to work. similarly if
@@ -191,6 +191,22 @@ export function make_maze(size_x, size_y, cutout_radius) {
       stack.push(next);
     } else {
       here = stack.pop();
+    }
+  }
+
+  if (cutout_radius > 0) {
+    --cutout_radius;
+    const smallest_side = Math.min(size_x, size_y);
+    cutout_radius = Math.min(
+      cutout_radius,
+      (smallest_side - 1) / 2
+    );
+    const x_mid = (size_x - 1) / 2;
+    const y_mid = (size_y - 1) / 2;
+    for (const y of range(y_mid - cutout_radius, y_mid + cutout_radius)) {
+      for (const x of range(x_mid - cutout_radius, x_mid + cutout_radius)) {
+        grid[y][x] = 1;
+      }
     }
   }
 
