@@ -215,9 +215,9 @@ export function make_maze(size_x, size_y, cutout_radius = 0) {
 
 export function pretty_print_grid(grid) {
   let msg = "";
-  for (const y of grid) {
-    for (const x of y) {
-      msg += x ? "  " : "██";
+  for (const row of grid) {
+    for (const cell of row) {
+      msg += cell ? "  " : "██";
     }
     msg += "\n";
   }
