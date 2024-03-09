@@ -11,7 +11,7 @@ import {
 import { Square, Lake_Mesh } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { check_scene_intersection } from "./utilities.js";
+import { check_scene_intersection, make_maze, pretty_print_grid } from "./utilities.js";
 import { strip_rotation } from "./math-extended.js";
 
 const {
