@@ -14,6 +14,14 @@ export function lerp(x, y, t) {
   return (1 - t) * x + t * y;
 }
 
+export function smooth_step(x) {
+  return x * x * (3 - 2 * x);
+}
+
+export function ease_out(x) {
+  return 1 - Math.pow(1 - x, 2);
+}
+
 export class Float3 extends Vector3 {
   static create(x, y, z) {
     const v = new Float3(3);

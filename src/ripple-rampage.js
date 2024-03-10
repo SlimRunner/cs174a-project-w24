@@ -7,12 +7,14 @@ import {
   Crosshair_Shader,
   Ripple_Shader,
   Complex_Textured,
+  Flat_Color_Shader,
 } from "./custom-shaders.js";
 import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face } from "./utilities.js";
-import { strip_rotation } from "./math-extended.js";
+import { lerp, ease_out, strip_rotation } from "./math-extended.js";
+import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
   Vector,
@@ -43,10 +45,14 @@ export class Ripple_Rampage extends Scene {
     const maze_height_ratio = 1.25;
     this.maze = make_maze(7, 7, 3);
     
+    this.flash_light = false;
+    this.time_at_click = 0;
+    this.clicked_on_frame = 0;
+    
     pretty_print_grid(this.maze);
 
     this.transfomations = {
-      click_at: Mat4.identity(),
+      click_at: Mat4.translation(-1000,-1000,-1000),
       maze: Mat4.scale(maze_size, maze_size, maze_size),
     }
 
@@ -71,6 +77,7 @@ export class Ripple_Rampage extends Scene {
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
+      solid_white: new Material(new Flat_Color_Shader(), {color: color(1, 1, 1, 1)}),
       matte: new Material(new defs.Phong_Shader(), {
         ambient: 0,
         diffusivity: 1,
@@ -97,14 +104,11 @@ export class Ripple_Rampage extends Scene {
         color: color(1, 1, 1, 1),
       }),
       uv: new Material(new UV_Shader()),
-      matte: new Material(new defs.Phong_Shader(), {
-        ambient: 0,
-        diffusivity: 1,
-        specularity: 0,
-        color: color(1, 1, 1, 1),
-      }),
       skybox: new Material(new Hosek_Wilkie_Skybox()),
-      ui_crosshair: new Material(new Crosshair_Shader()),
+      ui_crosshair: new Material(new Crosshair_Shader(), {
+        fg_color: color(1, 1, 1, 0.4),
+        bg_color: color(0, 0, 0, 0.8),
+      }),
       ripple: new Material(new Ripple_Shader(), {
         color: hex_color("#ADD8E6"),
         size: 2.0,
@@ -256,6 +260,8 @@ export class Ripple_Rampage extends Scene {
     this.new_line();
     this.key_triggered_button("Add Raindrop", ["Shift", "W"], () => this.addRainButton = true);
     this.new_line();
+    this.make_key_insensitive("Toggle flashlight", ["F"], () => this.flash_light = !this.flash_light);
+    this.new_line();
   }
 
   cleanRipples(time){
@@ -357,6 +363,7 @@ export class Ripple_Rampage extends Scene {
       this.transfomations.click_at[0][3] = intersection[0];
       this.transfomations.click_at[1][3] = intersection[1];
       this.transfomations.click_at[2][3] = intersection[2];
+      this.clicked_on_frame = true;
 
       const is_capturable = this.groups.clickables[mesh_index].capturable;
       const is_in_range = distance <= (
@@ -401,6 +408,22 @@ export class Ripple_Rampage extends Scene {
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
 
+    if (this.clicked_on_frame) {
+      this.clicked_on_frame = false;
+      this.time_at_click = t;
+    }
+
+    const time_since_click = t - this.time_at_click;
+
+    this.ambient_color = get_average_sky_color({
+      sun_zenith: Math.PI * 0.50 * (0.5 * Math.sin(0.2 * t) + 0.5),
+      sun_azimuth: Math.PI * ((0.2 * t) % 2.0)
+    });
+    this.sun_color = get_sun_color({
+      sun_zenith: Math.PI * 0.50 * (0.5 * Math.sin(0.2 * t) + 0.5),
+      sun_azimuth: Math.PI * ((0.2 * t) % 2.0)
+    });
+
     program_state.projection_transform = Mat4.perspective(
       Math.PI * 64 / 180,
       context.width / context.height,
@@ -409,17 +432,6 @@ export class Ripple_Rampage extends Scene {
     );
 
     let model_transform = Mat4.identity();
-
-    this.shapes.water_surface.setScale(this.lakeTransform);
-    // The parameters of the Light are: position, color, size
-    program_state.lights = [
-      new Light(vec4(-5, 300, -5, 1), color(1,1,1,1), 10000),
-      new Light(vec4(5, 6, 5, 1), color(1,1,1,1), 20),
-    ];
-
-    // =========================================================
-    // Drawing environment elements (distant)
-    // Be careful of the order
     
     const CMT = program_state.camera_transform;
     const cam_loc = CMT
@@ -431,6 +443,18 @@ export class Ripple_Rampage extends Scene {
       [CMT[2][0], 0, CMT[2][2], CMT[2][3]    ],
       [        0, 0,         0,         1],
     ]);
+    const flash_lead = cam_lead.times(vec4(0, 0, -1, 1));
+
+    this.shapes.water_surface.setScale(this.lakeTransform);
+    // The parameters of the Light are: position, color, size
+    program_state.lights = [
+      new Light(vec4(0, 10, 0, 0), this.sun_color, 50),
+      new Light(vec4(...flash_lead, 1), (this.flash_light?color(1,1,1,1):color(0,0,0,1)), 3),
+    ];
+
+    // =========================================================
+    // Drawing environment elements (distant)
+    // Be careful of the order
 
     // TODO: prevent distortion when looking up or down
     if (this.captured_object && this.captured_object.capturable) {
@@ -458,6 +482,7 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       this.lakeTransform,
+      // this.materials.matte.override(this.ambient_color)
       this.materials.matte.override(hex_color("#00FFFF"))
     );
     
@@ -495,14 +520,6 @@ export class Ripple_Rampage extends Scene {
       this.groups.clickables[0].model_transform,
       this.materials.uv
     );
-    
-    // how to place something where you clicked
-    this.shapes.sphere.draw(
-      context,
-      program_state,
-      this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25)),
-      this.materials.matte
-    );
 
     this.shapes.maze_walls.draw(
       context,
@@ -522,7 +539,21 @@ export class Ripple_Rampage extends Scene {
       this.addRainButton = false;
     }
     this.displayRaindrops(context, program_state)
-    this.cleanRaindrops(t);    
+    this.cleanRaindrops(t);
+
+    if (time_since_click < 0.5) {
+      const t_smooth = ease_out(time_since_click * 2);
+      const sp_size = lerp(0, 0.25, t_smooth);
+      // how to place something where you clicked
+      this.shapes.sphere.draw(
+        context,
+        program_state,
+        this.transfomations.click_at.times(Mat4.scale(sp_size ,sp_size ,sp_size)),
+        this.materials.solid_white.override({
+          color: color(1, 1, 1, lerp(1, 0, t_smooth))
+        })
+      );
+    }
     // =========================================================
     // Below this line only GUI elements must be rendered.
     
