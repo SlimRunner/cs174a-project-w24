@@ -5,12 +5,15 @@ https://www.shadertoy.com/view/wslfD7
 The changes include the conversion from the original coordinate system
 and the implementation of a vertex shader since Shadertoy provides
 always just a single fullscreen fragment.
+
+Additionally, I fix a bug the code had that it naively computed a arccos
+of 1 and -1.
 */
 
 export function get_shared_skybox_model() {
 return(`#version 300 es
 
-precision mediump float;
+precision highp float;
 
 /*
 This source is published under the following 3-clause BSD license.
@@ -382,10 +385,11 @@ vec3 spectral_radiance(float theta, float gamma, int albedo, int turbidity, floa
 
 // Returns angle between two directions defined by zentih and azimuth angles
 float angle(float z1, float a1, float z2, float a2) {
-  return acos(
-  	sin(z1) * cos(a1) * sin(z2) * cos(a2) +
-  	sin(z1) * sin(a1) * sin(z2) * sin(a2) +
-  	cos(z1) * cos(z2));
+  float dist = sin(z1) * cos(a1) * sin(z2) * cos(a2) +
+    sin(z1) * sin(a1) * sin(z2) * sin(a2) +
+    cos(z1) * cos(z2);
+  dist = clamp(dist, 0.0, 1.0);
+  return acos(dist);
 }
 
 vec3 sample_sky(float view_zenith, float view_azimuth, float sun_zenith, float sun_azimuth) {
@@ -435,10 +439,10 @@ void main() {
   // transform back to RGB
   vec3 RGB = XYZ_to_RGB(XYZ);
   // adjust brightness gain
-  vec3 col = expose(RGB, 0.08);
+  vec3 col = expose(RGB, 0.1);
   
   // assign final color
-  fragColor = vec4(col, 1.0);
+  fragColor = clamp(vec4(col, 1.0), 0.0, 1.0);
 }
 `);
 }
