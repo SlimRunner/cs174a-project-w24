@@ -1023,24 +1023,17 @@ export class Cloud_Shader extends Shader {
 
       void main() {
 
-  
-      float noise_value = 1.0 + 0.2* sin(animation_time); // Adjust this value to control the intensity of shaking
-      vec3 mine = vec3 (random(position.xy), random(position.yz), random(position.zx));
-      vec3 quivered_position = position + normal * noise_value * 0.1 * random(position.xy) + 0.1*mine;
+        float noise_value = 1.0 + 0.3* sin(animation_time); // Adjust this value to control the intensity of shaking
+        float high_frequency = 0.1 * sin((animation_time + 0.5 * random(position.xy)) * 10.0 );
+        vec3 quivered_position = position + normal * 0.1 * (noise_value + high_frequency );
 
         uvs.x = mapRange(normal.x,-1.0,1.0,0.0,1.0);
         uvs.y = mapRange(normal.y,-1.0,1.0,0.0,1.0);
         uvs.z = mapRange(normal.z,0.0,-1.0,0.5,1.0);
 
         // Transform the quivered position to view space
-   vec4 p4 = vec4(quivered_position, 1.0);
-    // mat4 modelViewMatrix = view * model;
-  //  vec4 viewModelPosition = modelViewMatrix * p4;
-
-
-        // uvs = normal;
-    //    vec4 p4 = vec4(position, 1.0);
-        
+        vec4 p4 = vec4(quivered_position, 1.0);
+          
         //determine view space p4
         mat4 modelViewMatrix = view * model;
         vec4 viewModelPosition = modelViewMatrix * p4;
@@ -1050,6 +1043,7 @@ export class Cloud_Shader extends Shader {
       
         //determine final 3D position
         gl_Position = projection * viewModelPosition;
+
       }
     `;
   }
@@ -1092,15 +1086,12 @@ export class Cloud_Shader extends Shader {
 
         float multiplier=1.0;
 
-       float distance_to_center = sqrt(pow(u-0.5,2.0) + pow(v-0.5,2.0));
-       multiplier=distance_to_center*0.1;
-        // if (distance_to_center > 0.3 && distance_to_center < 0.4) {
-        //    multiplier=5.0
-        //}
+        float distance_to_center = sqrt(pow(u-0.5,2.0) + pow(v-0.5,2.0));
+        multiplier=distance_to_center*0.1;
         float an_floor= floor(animation_time);
         float density = noise(uv * 5.0 + 0.1*multiplier) + (0.01*multiplier) ;
         
-       // density = 5.0;
+        // density = 5.0;
         vec3 color = vec3(1.0) * density;
         
         gl_FragColor = vec4(color, density);
