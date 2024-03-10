@@ -1,3 +1,12 @@
+/*
+I have adapted the code for this shader from a shadertoy
+https://www.shadertoy.com/view/wslfD7
+
+The changes include the conversion from the original coordinate system
+and the implementation of a vertex shader since Shadertoy provides
+always just a single fullscreen fragment.
+*/
+
 export function get_shared_skybox_model() {
 return(`#version 300 es
 
@@ -232,11 +241,6 @@ const float kHosekRadZ[] = float[](
 );
 `);
 }
-
-/*
-I have adapted the code for this shader from a shadertoy
-with ID wslfD7
-*/
 
 export function get_vertex_skybox_model() {
 return (`
