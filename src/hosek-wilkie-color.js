@@ -8,7 +8,7 @@ ambient color of the scene along with lighting color and intensity.
 */
 
 import { tiny } from "../examples/common.js";
-import { lerp } from "./math-extended";
+import { clamp } from "./math-extended.js";
 
 const {
   vec3,
@@ -242,6 +242,27 @@ export function get_average_sky_color({
   // adjust brightness gain
   const col = expose(RGB, 0.08);
   
+  // assign final color
+  return col.map(c => clamp(c, 0, 1)).to4(1.0);
+}
+
+let sun_burn_patch = vec3(1, 1, 1);
+export function get_sun_color({
+  // high noon at 0, horizon at pi/2
+  sun_zenith = 0,
+  // starts at x-axis moves clockwise towards z at pi/2
+  sun_azimuth = 0
+}) {
+  let view_zenith = sun_zenith;
+  let view_azimuth = sun_azimuth;
+  
+  const sample = sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
+  
+  const RGB = XYZ_to_RGB(sample);
+  // adjust brightness gain
+  let col = expose(RGB, 0.08).map(n => Math.sqrt(clamp(n, 0, 1)));
+
+
   // assign final color
   return col.to4(1.0);
 }
