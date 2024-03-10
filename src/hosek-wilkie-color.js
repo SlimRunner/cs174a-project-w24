@@ -7,7 +7,7 @@ to get an "averaged sky color" that I can use to dynamically change the
 ambient color of the scene along with lighting color and intensity.
 */
 
-import { tiny } from "../tiny-graphics";
+import { tiny } from "../examples/common.js";
 import { lerp } from "./math-extended";
 
 const {
@@ -118,7 +118,7 @@ function get_control_points_radiance(channel, albedo, turbidity, control_points)
 function get_coeffs(channel, albedo, turbidity, sun_zenith, coeffs) {
   const t = transform_sun_zenith(sun_zenith);
   for (let i = 0; i < 9; ++i) {
-  	const control_points = (new Array(6)).fill(0.0);
+  	const control_points = (Array(6)).fill(0.0);
   	get_control_points(channel, albedo, turbidity, i, control_points);
   	coeffs[i] = eval_quintic_bezier(control_points, t);
   }
@@ -127,7 +127,7 @@ function get_coeffs(channel, albedo, turbidity, sun_zenith, coeffs) {
 function mean_spectral_radiance(albedo, turbidity, sun_zenith) {
   const spectral_radiance = vec3(0, 0, 0);
   for (let i = 0; i < 3; ++i) {
-  	const control_points = (new Array(6)).fill(0.0);
+  	const control_points = (Array(6)).fill(0.0);
   	get_control_points_radiance(i, albedo, turbidity, control_points);
   	const t = transform_sun_zenith(sun_zenith);
   	spectral_radiance[i] = eval_quintic_bezier(control_points, t);
@@ -156,7 +156,7 @@ function F(theta, gamma, coeffs) {
 function spectral_radiance(theta, gamma, albedo, turbidity, sun_zenith) {
   const XYZ = vec3(0, 0, 0);
   for (let i = 0; i < 3; ++i) {
-  	const coeffs = (new Array.from(9)).fill(0.0);
+  	const coeffs = (Array.from(9)).fill(0.0);
   	get_coeffs(i, albedo, turbidity, sun_zenith, coeffs);
   	XYZ[i] = F(theta, gamma, coeffs);
   }
@@ -165,10 +165,10 @@ function spectral_radiance(theta, gamma, albedo, turbidity, sun_zenith) {
 
 // Returns angle between two directions defined by zentih and azimuth angles
 function angle(z1, a1, z2, a2) {
-  return Math.acos(
-  	Math.sin(z1) * Math.cos(a1) * Math.sin(z2) * Math.cos(a2) +
-  	Math.sin(z1) * Math.sin(a1) * Math.sin(z2) * Math.sin(a2) +
-  	Math.cos(z1) * Math.cos(z2));
+  const dist = Math.sin(z1) * Math.cos(a1) * Math.sin(z2) * Math.cos(a2) +
+    Math.sin(z1) * Math.sin(a1) * Math.sin(z2) * Math.sin(a2) +
+    Math.cos(z1) * Math.cos(z2);
+  return Math.acos(clamp(dist, 1, -1));
 }
 
 function sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth) {
@@ -184,11 +184,11 @@ function sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth) {
 // CIE-XYZ to linear RGB
 function XYZ_to_RGB(XYZ) {
   const XYZ_to_linear = Matrix.of(
-  	[ 3.24096994, -0.96924364, 0.55630080],
-  	[-1.53738318,  1.8759675, -0.20397696],
-  	[-0.49861076,  0.04155506, 1.05697151]
+    [ 3.24096994, -1.53738318, -0.49861076],
+  	[-0.96924364,  1.8759675,   0.04155506],
+  	[ 0.55630080, -0.20397696,  1.05697151]
   );
-  return XYZ_to_linear.times_pairwise(XYZ);
+  return XYZ_to_linear.times(XYZ);
 }
 
 // Clamps color between 0 and 1 smoothly
@@ -207,19 +207,21 @@ function expose(color, exposure) {
   return divide_pairwise(
     two,
     one.plus(
-      Math.exp(color.times(-exposure))
+      color.times(-exposure).map(n => {
+        return Math.exp(n);
+      })
     )
   ).minus(one);
 }
 
-function get_average_sky_color() {
+export function get_average_sky_color({
   // high noon at 0, horizon at pi/2
-  const sun_zenith = 0;
+  sun_zenith = 0,
   // starts at x-axis moves clockwise towards z at pi/2
-  const sun_azimuth = 0;
-  
+  sun_azimuth = 0
+}) {
   // built using Desmos
-  // https://www.desmos.com/3d/acb39bdb52
+  // https://www.desmos.com/3d/912f2ca12c
   const N_SAMPLES = 51;
   const AVG_SAMPLE_RATE = 1 / N_SAMPLES;
   let t = 0;
