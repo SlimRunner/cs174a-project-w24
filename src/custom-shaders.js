@@ -636,26 +636,8 @@ export class Crosshair_Shader extends Shader {
 
       void main() {
         vec2 uv = (gl_FragCoord.xy - 0.5) / resolution;
-        // float ratio = resolution.x / resolution.y;
-        // float thickness = 0.08; // Adjust the thickness of the crosshair lines
-        // float length = 0.1; // Adjust the length of the crosshair lines
-    
-        // // Horizontal line
-        // float horzLine = step(uv.y, 0.5 + thickness * 0.5) - step(uv.y, 0.5 - thickness * 0.5);
-        // // Vertical line
-        // float vertLine = step(uv.x, 0.5 + thickness * 0.5) - step(uv.x, 0.5 - thickness * 0.5);
-    
-        // // Apply length adjustment to the lines
-        // horzLine *= step(uv.x, 0.5 + length * 0.5) * step(0.5 - length * 0.5, uv.x);
-        // vertLine *= step(uv.y, 0.5 + length * 0.5) * step(0.5 - length * 0.5, uv.y);
-    
-        // // Combine the lines
-        // vec3 color = vec3(1.0); // Set crosshair color to white
-        // vec3 crosshair = mix(color, vec3(0.0), horzLine * vertLine);
-        
-        // gl_FragColor = vec4(vec2(uv.xy),0.0,1.0  );
-        // gl_FragColor = vec4(crosshair, 1.0);
         float cross_threshold = cross_hair(uv, 2.0, 10.0);
+        
         if (cross_hair(uv, 2.0, 20.0) <= 0.0) {
           gl_FragColor = vec4(vec3(1.0), 0.75);
         } else if (cross_hair(uv, 4.0, 22.0) <= 0.0) {
