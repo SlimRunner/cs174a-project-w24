@@ -8,10 +8,10 @@ import {
   Ripple_Shader,
   Complex_Textured,
 } from "./custom-shaders.js";
-import { Square, Lake_Mesh } from "./custom-shapes.js";
+import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { check_scene_intersection, make_maze, pretty_print_grid } from "./utilities.js";
+import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face } from "./utilities.js";
 import { strip_rotation } from "./math-extended.js";
 
 const {
@@ -39,17 +39,23 @@ export class Ripple_Rampage extends Scene {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
 
+    const maze_size = 60;
+    const maze_height_ratio = 1.25;
+    this.maze = make_maze(7, 7, 3);
+    
+    pretty_print_grid(this.maze);
+
     this.transfomations = {
-      large_floor_mat: Mat4.translation(0, 0, 0).times(Mat4.scale(100, 1, 100)),
-      click_at: Mat4.identity()
+      click_at: Mat4.identity(),
+      maze: Mat4.scale(maze_size, maze_size, maze_size),
     }
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
-      large_floor: new Square(),
-      small_square: new Square(),
+      maze_walls: new Maze_Walls(this.maze, this.transfomations.maze, maze_height_ratio),
+      maze_tiles: new Maze_Tiles(this.maze, this.transfomations.maze),
       water_surface: new Lake_Mesh(),
       raindrop: new defs.Subdivision_Sphere(4),
       skybox: new defs.Cube(),
@@ -61,8 +67,6 @@ export class Ripple_Rampage extends Scene {
       ],
       cloud: new Shape_From_File("objects/cloud-simple.obj"),
     };
-    this.shapes.large_floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
-    this.shapes.small_square.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(4)));
 
     // *** Materials
     this.materials = {
@@ -169,9 +173,19 @@ export class Ripple_Rampage extends Scene {
         {
           // this object is temporary
           // to be replaced by walls
-          id: "large_floor",
-          object: this.shapes.large_floor,
-          model_transform: this.transfomations.large_floor_mat,
+          id: "maze_walls",
+          object: this.shapes.maze_walls,
+          model_transform: Mat4.identity(),
+          capturable: false,
+          interactive: false,
+          max_distance: Infinity,
+        },
+        {
+          // this object is temporary
+          // to be replaced by walls
+          id: "maze_tiles",
+          object: this.shapes.maze_tiles,
+          model_transform: Mat4.identity(),
           capturable: false,
           interactive: true,
           max_distance: Infinity,
@@ -391,7 +405,11 @@ export class Ripple_Rampage extends Scene {
 
     // TODO: prevent distortion when looking up or down
     if (this.captured_object && this.captured_object.capturable) {
-      this.captured_object.model_transform = cam_lead.times(Mat4.translation(0, 0, -3)).map((x, i) => Vector.from(this.captured_object.model_transform[i]).mix(x, 0.1))
+      this.captured_object.model_transform = strip_rotation(cam_lead
+        .times(Mat4.translation(0, 0, -3))
+        .map((x, i) => Vector.from(
+          this.captured_object.model_transform[i]).mix(x, 0.1)
+        ));
     }
 
     // the following box ignores the depth buffer
@@ -406,14 +424,6 @@ export class Ripple_Rampage extends Scene {
     
     // =========================================================
     // Main scene is rendered here
-
-    this.shapes.large_floor.draw(
-      context,
-      program_state,
-      // model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
-      this.transfomations.large_floor_mat,
-      this.materials.grass_mat
-    );
     
     this.shapes.water_surface.draw(
       context,
@@ -437,34 +447,24 @@ export class Ripple_Rampage extends Scene {
       model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
       this.materials.ambient_phong
     );
-    this.shapes.mountains[1].draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 6)),
-      this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
-    );
-    this.shapes.mountains[2].draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 6)),
-      this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
-    );
+    // this.shapes.mountains[1].draw(
+    //   context,
+    //   program_state,
+    //   model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 6)),
+    //   this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
+    // );
+    // this.shapes.mountains[2].draw(
+    //   context,
+    //   program_state,
+    //   model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 6)),
+    //   this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
+    // );
 
     this.shapes.cloud.draw(
       context,
       program_state,
       this.groups.clickables[0].model_transform,
       this.materials.uv
-    );
-
-    this.shapes.small_square.draw(
-      context,
-      program_state,
-      model_transform
-        .times(Mat4.translation(18, 0.01, 0))
-        .times(Mat4.scale(-8, 0.01, 8))
-        ,
-      this.materials.stone_mat
     );
     
     // how to place something where you clicked
@@ -473,7 +473,20 @@ export class Ripple_Rampage extends Scene {
       program_state,
       this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25)),
       this.materials.matte
-    )
+    );
+
+    this.shapes.maze_walls.draw(
+      context,
+      program_state,
+      Mat4.identity(),
+      this.materials.stone_mat
+    );
+    this.shapes.maze_tiles.draw(
+      context,
+      program_state,
+      Mat4.identity(),
+      this.materials.grass_mat
+    );
     
     if (this.addRainButton){
       this.addRaindrop(Mat4.translation(0, 0, 0));
