@@ -7,6 +7,14 @@ to get an "averaged sky color" that I can use to dynamically change the
 ambient color of the scene along with lighting color and intensity.
 */
 
+import { tiny } from "../tiny-graphics";
+import { lerp } from "./math-extended";
+
+const {
+  vec3,
+  Matrix
+} = tiny;
+
 const ALBEDO = 1;
 const TURBIDITY = 3;
 
@@ -56,4 +64,182 @@ const kHosekRadY = [
 
 const kHosekRadZ = [1.234428, 2.289628, -3.404699, 14.99436, 34.6839, 30.84842];
 
+function sample_coeff(channel, albedo, turbidity, quintic_coeff, coeff) {
+  // int index = 540 * albedo + 54 * turbidity + 9 * quintic_coeff + coeff;
+  const index =  9 * quintic_coeff + coeff;
+  if (channel == CIE_X) return kHosekCoeffsX[index];
+  if (channel == CIE_Y) return kHosekCoeffsY[index];
+  if (channel == CIE_Z) return kHosekCoeffsZ[index];
+}
 
+function sample_radiance(channel, albedo, turbidity, quintic_coeff) {
+  // int index = 60 * albedo + 6 * turbidity + quintic_coeff;
+  const index = quintic_coeff;
+  if (channel == CIE_X) return kHosekRadX[index];
+  if (channel == CIE_Y) return kHosekRadY[index];
+  if (channel == CIE_Z) return kHosekRadZ[index];
+}
+
+function eval_quintic_bezier(control_points, t) {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const t4 = t3 * t;
+  const t5 = t4 * t;
+  
+  const t_inv = 1.0 - t;
+  const t_inv2 = t_inv * t_inv;
+  const t_inv3 = t_inv2 * t_inv;
+  const t_inv4 = t_inv3 * t_inv;
+  const t_inv5 = t_inv4 * t_inv;
+  	
+  return (
+  	control_points[0] *             t_inv5 +
+  	control_points[1] *  5.0 * t  * t_inv4 +
+  	control_points[2] * 10.0 * t2 * t_inv3 +
+  	control_points[3] * 10.0 * t3 * t_inv2 +
+  	control_points[4] *  5.0 * t4 * t_inv  +
+  	control_points[5] *        t5
+  );
+}
+
+function transform_sun_zenith(sun_zenith) {
+  const elevation = M_PI / 2.0 - sun_zenith;
+  return Math.pow(elevation / (M_PI / 2.0), 0.333333);
+}
+
+function get_control_points(channel, albedo, turbidity, coeff, control_points) {
+  for (let i = 0; i < 6; ++i) control_points[i] = sample_coeff(channel, albedo, turbidity, i, coeff);
+}
+
+function get_control_points_radiance(channel, albedo, turbidity, control_points) {
+  for (let i = 0; i < 6; ++i) control_points[i] = sample_radiance(channel, albedo, turbidity, i);
+}
+
+function get_coeffs(channel, albedo, turbidity, sun_zenith, coeffs) {
+  const t = transform_sun_zenith(sun_zenith);
+  for (let i = 0; i < 9; ++i) {
+  	const control_points = (new Array(6)).fill(0.0);
+  	get_control_points(channel, albedo, turbidity, i, control_points);
+  	coeffs[i] = eval_quintic_bezier(control_points, t);
+  }
+}
+
+function mean_spectral_radiance(albedo, turbidity, sun_zenith) {
+  const spectral_radiance = vec3(0, 0, 0);
+  for (let i = 0; i < 3; ++i) {
+  	const control_points = (new Array(6)).fill(0.0);
+  	get_control_points_radiance(i, albedo, turbidity, control_points);
+  	const t = transform_sun_zenith(sun_zenith);
+  	spectral_radiance[i] = eval_quintic_bezier(control_points, t);
+  }
+  return spectral_radiance;
+}
+
+function F(theta, gamma, coeffs) {
+  const A = coeffs[0];
+  const B = coeffs[1];
+  const C = coeffs[2];
+  const D = coeffs[3];
+  const E = coeffs[4];
+  const F = coeffs[5];
+  const G = coeffs[6];
+  const H = coeffs[8];
+  const I = coeffs[7];
+  const chi = (1.0 + Math.pow(Math.cos(gamma), 2.0)) / Math.pow(1.0 + H*H - 2.0 * H * Math.cos(gamma), 1.5);
+  
+  return (
+  	(1.0 + A * Math.exp(B / (Math.cos(theta) + 0.01))) *
+  	(C + D * Math.exp(E * gamma) + F * Math.pow(Math.cos(gamma), 2.0) + G * chi + I * Math.sqrt(Math.cos(theta)))
+  );
+}
+
+function spectral_radiance(theta, gamma, albedo, turbidity, sun_zenith) {
+  const XYZ = vec3(0, 0, 0);
+  for (let i = 0; i < 3; ++i) {
+  	const coeffs = (new Array.from(9)).fill(0.0);
+  	get_coeffs(i, albedo, turbidity, sun_zenith, coeffs);
+  	XYZ[i] = F(theta, gamma, coeffs);
+  }
+  return XYZ;
+}
+
+// Returns angle between two directions defined by zentih and azimuth angles
+function angle(z1, a1, z2, a2) {
+  return Math.acos(
+  	Math.sin(z1) * Math.cos(a1) * Math.sin(z2) * Math.cos(a2) +
+  	Math.sin(z1) * Math.sin(a1) * Math.sin(z2) * Math.sin(a2) +
+  	Math.cos(z1) * Math.cos(z2));
+}
+
+function sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth) {
+  const gamma = angle(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
+  const theta = view_zenith;
+  return spectral_radiance(
+    theta, gamma, ALBEDO, TURBIDITY, sun_zenith
+  ).times_pairwise(
+    mean_spectral_radiance(ALBEDO, TURBIDITY, sun_zenith)
+  );
+}
+
+// CIE-XYZ to linear RGB
+function XYZ_to_RGB(XYZ) {
+  const XYZ_to_linear = Matrix.of(
+  	[ 3.24096994, -0.96924364, 0.55630080],
+  	[-1.53738318,  1.8759675, -0.20397696],
+  	[-0.49861076,  0.04155506, 1.05697151]
+  );
+  return XYZ_to_linear.times_pairwise(XYZ);
+}
+
+// Clamps color between 0 and 1 smoothly
+function expose(color, exposure) {
+  const two = vec3(2.0, 2.0, 2.0);
+  const one = vec3(1.0, 1.0, 1.0);
+
+  const divide_pairwise = (a, b) => {
+    return vec3(
+      a[0] / b[0],
+      a[1] / b[1],
+      a[2] / b[2]
+    );
+  }
+  
+  return divide_pairwise(
+    two,
+    one.plus(
+      Math.exp(color.times(-exposure))
+    )
+  ).minus(one);
+}
+
+function get_average_sky_color() {
+  // high noon at 0, horizon at pi/2
+  const sun_zenith = 0;
+  // starts at x-axis moves clockwise towards z at pi/2
+  const sun_azimuth = 0;
+  
+  // built using Desmos
+  // https://www.desmos.com/3d/acb39bdb52
+  const N_SAMPLES = 51;
+  const AVG_SAMPLE_RATE = 1 / N_SAMPLES;
+  let t = 0;
+  let view_zenith = 0;
+  let view_azimuth = 0;
+  let sample, sum_of_samples = vec3(0, 0, 0);
+  for (let i = 0; i < N_SAMPLES; ++i) {
+    t = i / N_SAMPLES;
+    // same as sun zenith but for the sky
+    view_zenith = Math.sqrt(t) * M_PI / 2;
+    // same as sun azimuth but for the sky
+    view_azimuth = 11 * M_PI * 2 * t;
+    sample = sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
+    sum_of_samples.add_by(sample.times(AVG_SAMPLE_RATE));
+  }
+
+  const RGB = XYZ_to_RGB(sum_of_samples);
+  // adjust brightness gain
+  const col = expose(RGB, 0.08);
+  
+  // assign final color
+  return col.to4(1.0);
+}
