@@ -16,7 +16,7 @@
         "command": "./host.command"
       },
       "group": {
-        "kind": "build",
+        "kind": "none",
         "isDefault": true
       }
     }
