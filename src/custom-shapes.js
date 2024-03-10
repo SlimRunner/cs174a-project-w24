@@ -200,7 +200,8 @@ export class Maze_Walls extends Shape {
     }
 
     const norm_scalar = 1 / Math.max(grid_size_x, grid_size_z);
-    const norm_matrix = Mat4.scale(norm_scalar, height_ratio * norm_scalar, norm_scalar);
+    const norm_matrix = Mat4.translation(0.5, 0, 0.5);
+    norm_matrix.pre_multiply(Mat4.scale(norm_scalar, height_ratio * norm_scalar, norm_scalar));
     norm_matrix.pre_multiply(Mat4.translation(-0.5, 0.5 * height_ratio * norm_scalar, -0.5));
     norm_matrix.pre_multiply(model_matrix);
 
