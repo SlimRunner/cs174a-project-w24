@@ -165,6 +165,35 @@ export class Walk_Movement extends Scene {
     });
   }
 
+  make_key_insensitive(
+    description,
+    shortcut_combination,
+    callback,
+    color = "#6E6460",
+    release_event,
+    recipient = this,
+    parent = this.control_panel
+  ) {
+    this.key_triggered_button(
+      description,
+      shortcut_combination.map((s) => s.length > 1? s: s.toUpperCase()),
+      callback,
+      color,
+      release_event,
+      recipient,
+      parent
+    );
+    this.key_triggered_button(
+      description,
+      shortcut_combination.map((s) => s.length > 1? s: s.toLowerCase()),
+      callback,
+      color,
+      release_event,
+      recipient,
+      parent
+    );
+  }
+
   make_control_panel() {
     // make_control_panel(): Sets up a panel of interactive HTML elements, including
     // buttons with key bindings for affecting this scene, and live info readouts.
@@ -207,9 +236,10 @@ export class Walk_Movement extends Scene {
         (this.jump_thrust =
           this.height <= this.min_height ? this.jumping_force : 0)
     );
-    this.key_triggered_button(
+    this.new_line();
+    this.make_key_insensitive(
       "Forward",
-      ["w"],
+      ["W"],
       () => {
         this.dir_flag |= dir.N;
       },
@@ -218,21 +248,9 @@ export class Walk_Movement extends Scene {
         this.dir_flag &= dir.ALL ^ dir.N;
       }
     );
-    this.new_line();
-    this.key_triggered_button(
-      "Left",
-      ["a"],
-      () => {
-        this.dir_flag |= dir.W;
-      },
-      undefined,
-      () => {
-        this.dir_flag &= dir.ALL ^ dir.W;
-      }
-    );
-    this.key_triggered_button(
+    this.make_key_insensitive(
       "Back",
-      ["s"],
+      ["S"],
       () => {
         this.dir_flag |= dir.S;
       },
@@ -241,9 +259,21 @@ export class Walk_Movement extends Scene {
         this.dir_flag &= dir.ALL ^ dir.S;
       }
     );
-    this.key_triggered_button(
+    this.new_line();
+    this.make_key_insensitive(
+      "Left",
+      ["A"],
+      () => {
+        this.dir_flag |= dir.W;
+      },
+      undefined,
+      () => {
+        this.dir_flag &= dir.ALL ^ dir.W;
+      }
+    );
+    this.make_key_insensitive(
       "Right",
-      ["d"],
+      ["D"],
       () => {
         this.dir_flag |= dir.E;
       },

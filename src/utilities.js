@@ -132,7 +132,7 @@ export function check_scene_intersection(pos, dir, meshes) {
 }
 
 // Implemented with the visual help of Desmos
-// https://www.desmos.com/calculator/mzhbhtmfjc
+// https://www.desmos.com/calculator/3ru1z2y4um
 export function make_maze(size_x, size_y, cutout_radius = 0) {
   // size expresses the size of generation cells not actual size, For
   // example, a 1x1 turns into a 3x3 because that's how many neigboring
