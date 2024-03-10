@@ -592,7 +592,6 @@ export class Crosshair_Shader extends Shader {
   shared_glsl_code() {
     return `
       precision mediump float;
-      // varying vec2 uv;
     `;
   }
 
@@ -615,6 +614,8 @@ export class Crosshair_Shader extends Shader {
       ${this.shared_glsl_code()}
 
       uniform vec2 resolution;
+      uniform vec4 fg_color;
+      uniform vec4 bg_color;
 
       float cross_hair(vec2 pos, float thickness, float length) {
         float ratio_yx = resolution.y / resolution.x;
@@ -639,9 +640,9 @@ export class Crosshair_Shader extends Shader {
         float cross_threshold = cross_hair(uv, 2.0, 10.0);
         
         if (cross_hair(uv, 2.0, 20.0) <= 0.0) {
-          gl_FragColor = vec4(vec3(1.0), 0.75);
+          gl_FragColor = fg_color;
         } else if (cross_hair(uv, 4.0, 22.0) <= 0.0) {
-          gl_FragColor = vec4(vec3(0.0), 0.75);
+          gl_FragColor = bg_color;
         } else {
           discard;
         }
@@ -650,7 +651,8 @@ export class Crosshair_Shader extends Shader {
   }
 
   send_material(gl, gpu, material) {
-    // nothing to do
+    gl.uniform4fv(gpu.fg_color, material.fg_color);
+    gl.uniform4fv(gpu.bg_color, material.bg_color);
   }
 
   send_gpu_state(gl, gpu, gpu_state, model_transform) {
@@ -672,13 +674,14 @@ export class Crosshair_Shader extends Shader {
 
   update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
     const defaults = {
-      color: color(0, 0, 0, 1),
+      fg_color: color(1, 1, 1, 1),
+      bg_color: color(0, 0, 0, 1)
     };
     material = Object.assign({}, defaults, material);
     context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
     context.uniform2fv(gpu_addresses.resolution, [context.canvas.width, context.canvas.height]);
 
-    // this.send_material(context, gpu_addresses, material);
+    this.send_material(context, gpu_addresses, material);
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
