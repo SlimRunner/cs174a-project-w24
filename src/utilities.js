@@ -1,8 +1,43 @@
 import { defs, tiny } from "../examples/common.js";
 
 const {
-  vec3, vec4, Mat4, Vector3
+  vec3, vec4, Mat4, Vector3, Vector
 } = tiny;
+
+export const enum_axis = Object.freeze({
+  x: 0,
+  y: 1,
+  z: 2,
+});
+
+// helper generator to get a iteratable ranges
+export function* range(start, end, step = 1, offset = 0) {
+  if (start === end) {
+      yield start;
+      return;
+  }
+  step = Math.abs(step);
+  const mod = (n, m) => {
+      const rem = n % m;
+      return n * m >= 0 ? rem : rem ? rem + m : 0;
+  };
+  let i = start;
+  let n = mod(offset, step);
+  let s = Math.sign(end - start);
+  if (i % step !== n) {
+      i += s >= 0 ? step - mod(i - n, step) : -mod(i - n, step);
+      if (!(s >= 0 ? i <= end : i >= end)) return;
+  }
+  while (s >= 0 ? i <= end : i >= end) {
+      yield i;
+      i += s * step;
+  }
+}
+
+// does not include end
+export function rand_int(start, size) {
+  return Math.floor(Math.random() * size) + start;
+}
 
 export function find_ray_triag_crossing(point, dir, a, b, c) {
   // https://courses.cs.washington.edu/courses/csep557/10au/lectures/triangle_intersection.pdf
@@ -93,5 +128,161 @@ export function check_scene_intersection(pos, dir, meshes) {
     normal: normal,
     triag_index: triag_index,
     mesh_index: mesh_index,
+  }
+}
+
+// Implemented with the visual help of Desmos
+// https://www.desmos.com/calculator/mzhbhtmfjc
+export function make_maze(size_x, size_y, cutout_radius = 0) {
+  // size expresses the size of generation cells not actual size, For
+  // example, a 1x1 turns into a 3x3 because that's how many neigboring
+  // cells you need for the backtracking algorithm to work. similarly if
+  // you give a 2x2 you get a 5x5, and so on.
+  size_x = 2 * size_x + 1;
+  size_y = 2 * size_y + 1;
+
+  const grid = [];
+
+  for (const y of range(0, size_y - 1)) {
+    const row = [];
+    grid.push(row);
+    for (const x of range(0, size_x - 1)) {
+      row.push(0);
+    }
+  }
+
+  // guarantees to get a valid random node in the grid
+  const get_odd_rand = (t_max) => {
+    const t = rand_int(0, t_max);
+    return 1 + 2 * Math.floor(Math.min(t, t_max - 2) * 0.5);
+  };
+  
+  const get_neighbors = (x_max, y_max, h, g) => {
+    // note the neighbors are always 2 units away
+    return [
+      { x: 2 + h.x, y: 0 + h.y },
+      { x: 0 + h.x, y: 2 + h.y },
+      { x: -2 + h.x, y: 0 + h.y },
+      { x: 0 + h.x, y: -2 + h.y },
+    ].filter(v => {
+      return (
+        0 <= v.x && v.x < x_max &&
+        0 <= v.y && v.y < y_max &&
+        !g[v.y][v.x]
+      );
+    });
+  };
+
+  const stack = [{
+    x: get_odd_rand(size_x),
+    y: get_odd_rand(size_y),
+  }];
+  
+  let here = stack[0];
+
+  // This is not regular DFS; instead, the stack keeps growing so long
+  // as you can move to a neighboring cell non-visited cell. Once you
+  // can no longer do that, then you start backtracking using the stack.
+  // Then the code does that until it can move to a non-visited neighbor
+  // again. The algorithm finishes once the stack is empty.
+  while (stack.length) {
+    grid[here.y][here.x] = 1;
+    const neighbors = get_neighbors(size_x, size_y, here, grid);
+    if (neighbors.length) {
+      const next = neighbors[rand_int(0, neighbors.length)];
+      const x_mid = (next.x + here.x) / 2;
+      const y_mid = (next.y + here.y) / 2;
+      grid[y_mid][x_mid] = 1;
+      here = next;
+      stack.push(next);
+    } else {
+      here = stack.pop();
+    }
+  }
+
+  if (cutout_radius > 0) {
+    --cutout_radius;
+    const smallest_side = Math.min(size_x, size_y);
+    cutout_radius = Math.min(
+      cutout_radius,
+      (smallest_side - 1) / 2
+    );
+    const x_mid = (size_x - 1) / 2;
+    const y_mid = (size_y - 1) / 2;
+    for (const y of range(y_mid - cutout_radius, y_mid + cutout_radius)) {
+      for (const x of range(x_mid - cutout_radius, x_mid + cutout_radius)) {
+        grid[y][x] = 1;
+      }
+    }
+  }
+
+  return grid;
+}
+
+export function pretty_print_grid(grid) {
+  let msg = "";
+  for (const row of grid) {
+    for (const cell of row) {
+      msg += cell ? "  " : "██";
+    }
+    msg += "\n";
+  }
+  console.log(msg);
+}
+
+export function get_square_face({
+  axis = enum_axis.x,
+  positive_normal = true,
+  index_shift = 0,
+  along_disp = 0,
+  side_length = 0,
+  location = vec3(0, 0, 0),
+} = {}) {
+  side_length = 0.5 * side_length;
+  const X = [  along_disp, side_length, side_length][axis];
+  const Y = [side_length,   along_disp, side_length][axis];
+  const Z = [side_length, side_length,   along_disp][axis];
+  const position = Vector3.cast(
+    [X, Y, Z],
+    [X, Y, Z],
+    [X, Y, Z],
+    [X, Y, Z],
+  );
+
+  const ortho_pair = [
+    {u: 1,v: 2},
+    {u: 0,v: 2},
+    {u: 0,v: 1},
+  ][axis];
+  position.forEach((p, i, a) => {
+    p[ortho_pair.u] *= (i / 2 | 0) ? 1 : -1;
+    p[ortho_pair.v] *= (i % 2) ? 1 : -1;
+  });
+
+  position.forEach(p => p.add_by(location));
+
+  
+  const N = [0, 0, 0];
+  N[axis] = positive_normal ? 1 : -1;
+  const normal = Vector3.cast(
+    N,
+    N,
+    N,
+    N,
+  );
+
+  // Arrange the vertices into a square shape in texture space too:
+  const texture_coord = Vector.cast([0, 0], [1, 0], [0, 1], [1, 1]);
+  // Use two triangles this time, indexing into four distinct vertices:
+  const indices = [0, 1, 2, 1, 3, 2];
+  if (index_shift > 0) {
+    indices.forEach((n, i, a) => a[i] = n + index_shift);
+  }
+
+  return {
+    position,
+    normal,
+    texture_coord,
+    indices
   }
 }
