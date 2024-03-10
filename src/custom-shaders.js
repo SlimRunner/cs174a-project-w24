@@ -982,3 +982,163 @@ export class Complex_Textured extends Shader {
     }
   }
 }
+
+export class Cloud_Shader extends Shader {
+  // This is a Shader using Phong_Shader as template
+  // TODO: Modify the glsl coder here to create a Gouraud Shader (Planet 2)
+
+  constructor(num_lights = 2) {
+    super();
+  }
+
+  shared_glsl_code() {
+    // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+    return ` 
+      precision mediump float;
+
+      varying vec3 vViewPosition;
+      varying vec3 uvs;
+
+      float mapRange(float value, float minValue, float maxValue, float newMinValue, float newMaxValue) {
+        return mix(newMinValue, newMaxValue, (value - minValue) / (maxValue - minValue));
+      }
+    `;
+  }
+
+  vertex_glsl_code() {
+    // ********* VERTEX SHADER *********
+    return `
+      ${this.shared_glsl_code()}
+      attribute vec3 position, normal;
+      
+      uniform mat4 projection;
+      uniform mat4 view;
+      uniform mat4 model;
+      uniform float animation_time;
+      float random(vec2 st) {
+        
+        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 10.0);
+   
+      }
+
+      void main() {
+
+  
+      float noise_value = 1.0 + 0.2* sin(animation_time); // Adjust this value to control the intensity of shaking
+      vec3 mine = vec3 (random(position.xy), random(position.yz), random(position.zx));
+      vec3 quivered_position = position + normal * noise_value * 0.1 * random(position.xy) + 0.1*mine;
+
+        uvs.x = mapRange(normal.x,-1.0,1.0,0.0,1.0);
+        uvs.y = mapRange(normal.y,-1.0,1.0,0.0,1.0);
+        uvs.z = mapRange(normal.z,0.0,-1.0,0.5,1.0);
+
+        // Transform the quivered position to view space
+   vec4 p4 = vec4(quivered_position, 1.0);
+    // mat4 modelViewMatrix = view * model;
+  //  vec4 viewModelPosition = modelViewMatrix * p4;
+
+
+        // uvs = normal;
+    //    vec4 p4 = vec4(position, 1.0);
+        
+        //determine view space p4
+        mat4 modelViewMatrix = view * model;
+        vec4 viewModelPosition = modelViewMatrix * p4;
+        
+        //pass varyings to fragment shader
+        vViewPosition = viewModelPosition.xyz;
+      
+        //determine final 3D position
+        gl_Position = projection * viewModelPosition;
+      }
+    `;
+  }
+
+  fragment_glsl_code() {
+    // ********* FRAGMENT SHADER *********
+    // A fragment is a pixel that's overlapped by the current triangle.
+    // Fragments affect the final image or get discarded due to depth.
+    return `
+      ${this.shared_glsl_code()}
+      
+      uniform vec2 u_resolution; // viewport resolution
+      uniform float animation_time; // time
+      
+      
+      float random(vec2 st) {
+        
+        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 5.0);
+   
+      }
+
+      float noise(vec2 st) {
+        vec2 i = floor(st);
+        vec2 f = fract(st);
+        
+        float a = random(i);
+        float b = random(i + vec2(1.0, 0.0));
+        float c = random(i + vec2(0.0, 1.0));
+        float d = random(i + vec2(1.0, 1.0));
+        
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        
+        return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+      }
+
+      void main() {
+        vec2 uv = gl_FragCoord.xy;
+        float u= gl_FragCoord.x;
+        float v= gl_FragCoord.y;
+
+        float multiplier=1.0;
+
+       float distance_to_center = sqrt(pow(u-0.5,2.0) + pow(v-0.5,2.0));
+       multiplier=distance_to_center*0.1;
+        // if (distance_to_center > 0.3 && distance_to_center < 0.4) {
+        //    multiplier=5.0
+        //}
+        float an_floor= floor(animation_time);
+        float density = noise(uv * 5.0 + 0.1*multiplier) + (0.01*multiplier) ;
+        
+       // density = 5.0;
+        vec3 color = vec3(1.0) * density;
+        
+        gl_FragColor = vec4(color, density);
+      }
+    `;
+}
+
+  send_material(gl, gpu, material) {
+    // nothing to do
+  }
+
+  send_gpu_state(gl, gpu, gpu_state, model_transform) {
+    gl.uniformMatrix4fv(
+      gpu.projection,
+      false,
+      Matrix.flatten_2D_to_1D(gpu_state.projection_transform.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.view,
+      false,
+      Matrix.flatten_2D_to_1D(gpu_state.camera_inverse.transposed())
+    );
+    gl.uniformMatrix4fv(
+      gpu.model,
+      false,
+      Matrix.flatten_2D_to_1D(model_transform.transposed())
+    );
+  }
+
+  update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+    const defaults = {
+      color: color(0, 0, 0, 1),
+    };
+    material = Object.assign({}, defaults, material);
+
+    // this.send_material(context, gpu_addresses, material);
+    context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
+
+    this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
+  }
+}

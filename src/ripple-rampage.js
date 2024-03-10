@@ -8,6 +8,7 @@ import {
   Ripple_Shader,
   Complex_Textured,
   Flat_Color_Shader,
+  Cloud_Shader,
 } from "./custom-shaders.js";
 import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
@@ -102,6 +103,12 @@ export class Ripple_Rampage extends Scene {
         diffusivity: 1,
         specularity: 0.4,
         color: color(1, 1, 1, 1),
+      }),
+      cloud: new Material(new Cloud_Shader(), {
+        ambient: 0,
+        diffusivity: 1,
+        specularity: 0.4,
+        color: hex_color("#000000")
       }),
       uv: new Material(new UV_Shader()),
       skybox: new Material(new Hosek_Wilkie_Skybox()),
@@ -518,7 +525,7 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       this.groups.clickables[0].model_transform,
-      this.materials.uv
+      this.materials.cloud
     );
 
     this.shapes.maze_walls.draw(
