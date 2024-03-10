@@ -409,11 +409,6 @@ vec3 expose(vec3 color, float exposure) {
 	return vec3(2.0) / (vec3(1.0) + exp(-exposure * color)) - vec3(1.0);
 }
 
-float atan2(in float y, in float x) {
-    bool s = (abs(x) > abs(y));
-    return mix(M_PI / 2.0 - atan(x,y), atan(y,x), s);
-}
-
 in vec3 fragCoord;
 out vec4 fragColor;
 
