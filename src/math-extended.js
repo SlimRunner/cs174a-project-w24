@@ -192,3 +192,7 @@ class Mat3 extends Matrix {
     return result.times(1 / (m00 * result[0][0] + m10 * result[0][1] + m20 * result[0][2]));
   }
 }
+
+export function clamp(val, min, max) {
+  return Math.min(max, Math.max(min, val));
+}
