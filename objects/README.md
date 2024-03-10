@@ -1,1 +1,0 @@
-Place your objects here (*.obj or other compatible files)
