@@ -216,6 +216,35 @@ export class Ripple_Rampage extends Scene {
     this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1, 1, 1));
   }
 
+  make_key_insensitive(
+    description,
+    shortcut_combination,
+    callback,
+    color = "#6E6460",
+    release_event,
+    recipient = this,
+    parent = this.control_panel
+  ) {
+    this.key_triggered_button(
+      description,
+      shortcut_combination.map((s) => s.length > 1? s: s.toUpperCase()),
+      callback,
+      color,
+      release_event,
+      recipient,
+      parent
+    );
+    this.key_triggered_button(
+      description,
+      shortcut_combination.map((s) => s.length > 1? s: s.toLowerCase()),
+      callback,
+      color,
+      release_event,
+      recipient,
+      parent
+    );
+  }
+
   make_control_panel() {
     // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
     // this.key_triggered_button(
