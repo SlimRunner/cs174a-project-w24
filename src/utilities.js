@@ -1,8 +1,14 @@
 import { defs, tiny } from "../examples/common.js";
 
 const {
-  vec3, vec4, Mat4, Vector3
+  vec3, vec4, Mat4, Vector3, Vector
 } = tiny;
+
+export const enum_axis = Object.freeze({
+  x: 0,
+  y: 1,
+  z: 2,
+});
 
 // helper generator to get a iteratable ranges
 export function* range(start, end, step = 1, offset = 0) {
@@ -222,4 +228,61 @@ export function pretty_print_grid(grid) {
     msg += "\n";
   }
   console.log(msg);
+}
+
+export function get_square_face({
+  axis = enum_axis.x,
+  positive_normal = true,
+  index_shift = 0,
+  along_disp = 0,
+  side_length = 0,
+  location = vec3(0, 0, 0),
+} = {}) {
+  side_length = 0.5 * side_length;
+  const X = [  along_disp, side_length, side_length][axis];
+  const Y = [side_length,   along_disp, side_length][axis];
+  const Z = [side_length, side_length,   along_disp][axis];
+  const position = Vector3.cast(
+    [X, Y, Z],
+    [X, Y, Z],
+    [X, Y, Z],
+    [X, Y, Z],
+  );
+
+  const ortho_pair = [
+    {u: 1,v: 2},
+    {u: 0,v: 2},
+    {u: 0,v: 1},
+  ][axis];
+  position.forEach((p, i, a) => {
+    p[ortho_pair.u] *= (i / 2 | 0) ? 1 : -1;
+    p[ortho_pair.v] *= (i % 2) ? 1 : -1;
+  });
+
+  position.forEach(p => p.add_by(location));
+
+  
+  const N = [0, 0, 0];
+  N[axis] = positive_normal ? 1 : -1;
+  const normal = Vector3.cast(
+    N,
+    N,
+    N,
+    N,
+  );
+
+  // Arrange the vertices into a square shape in texture space too:
+  const texture_coord = Vector.cast([0, 0], [1, 0], [0, 1], [1, 1]);
+  // Use two triangles this time, indexing into four distinct vertices:
+  const indices = [0, 1, 2, 1, 3, 2];
+  if (index_shift > 0) {
+    indices.forEach((n, i, a) => a[i] = n + index_shift);
+  }
+
+  return {
+    position,
+    normal,
+    texture_coord,
+    indices
+  }
 }
