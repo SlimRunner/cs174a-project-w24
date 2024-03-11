@@ -796,7 +796,7 @@ export class Complex_Textured extends Shader {
     return `
       precision mediump float;
       const int N_LIGHTS = ${this.num_lights};
-      uniform float ambient, diffusivity, specularity, smoothness;
+      uniform float ambient, diffusivity, specularity, smoothness, bumpiness;
       uniform vec4 light_positions_or_vectors[N_LIGHTS], light_colors[N_LIGHTS];
       uniform float light_attenuation_factors[N_LIGHTS];
       uniform vec4 ambient_color;
@@ -888,7 +888,7 @@ export class Complex_Textured extends Shader {
         // convert spec_color to grayscale
         float spec_intensity = dot(spec_color.rgb, vec3(0.299, 0.587, 0.114));
         // use bump_color and N (which is the normal) to compute a bump map
-        vec3 N_bumped = normalize( N + (bump_color.rbg - 0.5) * 1.0 );
+        vec3 N_bumped = normalize( N + (bump_color.rbg - 0.5) * bumpiness );
 
         // Compute an initial (ambient) color:
         gl_FragColor = vec4( (ambient_color * tex_color).xyz * ambient, ambient_color.w * tex_color.w ); 
@@ -912,6 +912,7 @@ export class Complex_Textured extends Shader {
     gl.uniform1f(gpu.diffusivity, material.diffusivity);
     gl.uniform1f(gpu.specularity, material.specularity);
     gl.uniform1f(gpu.smoothness, material.smoothness);
+    gl.uniform1f(gpu.bumpiness, material.bumpiness);
   }
 
   send_gpu_state(gl, gpu, gpu_state, model_transform) {
@@ -963,7 +964,14 @@ export class Complex_Textured extends Shader {
 
   update_GPU(gl_context, gpu_addresses, gpu_state, model_transform, material) {
     // Fill in any missing fields in the Material object with custom defaults for this shader:
-    const defaults = {color: color(0, 0, 0, 1), ambient: 0, diffusivity: 1, specularity: 1, smoothness: 40};
+    const defaults = {
+      color: color(0, 0, 0, 1),
+      ambient: 0,
+      diffusivity: 1,
+      specularity: 1,
+      smoothness: 40,
+      bumpiness: 1,
+    };
     material = Object.assign({}, defaults, material);
 
     this.send_material(gl_context, gpu_addresses, material);
