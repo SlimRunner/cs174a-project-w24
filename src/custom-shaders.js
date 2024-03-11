@@ -907,7 +907,7 @@ export class Complex_Textured extends Shader {
   send_material(gl, gpu, material) {
     // send_material(): Send the desired shape-wide material qualities to the
     // graphics card, where they will tweak the Phong lighting formula.
-    gl.uniform4fv(gpu.ambient_color, material.color);
+    gl.uniform4fv(gpu.ambient_color, material.ambient_color);
     gl.uniform1f(gpu.ambient, material.ambient);
     gl.uniform1f(gpu.diffusivity, material.diffusivity);
     gl.uniform1f(gpu.specularity, material.specularity);
@@ -965,7 +965,7 @@ export class Complex_Textured extends Shader {
   update_GPU(gl_context, gpu_addresses, gpu_state, model_transform, material) {
     // Fill in any missing fields in the Material object with custom defaults for this shader:
     const defaults = {
-      color: color(0, 0, 0, 1),
+      ambient_color: color(0, 0, 0, 1),
       ambient: 0,
       diffusivity: 1,
       specularity: 1,
@@ -1068,6 +1068,8 @@ export class Cloud_Shader extends Shader {
       
       uniform vec2 u_resolution; // viewport resolution
       uniform float animation_time; // time
+      uniform float ambient;
+      uniform vec4 ambient_color;
       
       
       float random(vec2 st) {
@@ -1102,16 +1104,18 @@ export class Cloud_Shader extends Shader {
         float an_floor= floor(animation_time);
         float density = noise(uv * 5.0 + 0.1*multiplier) + (0.01*multiplier) ;
         
-        // density = 5.0;
-        vec3 color = vec3(1.0) * density;
+        vec3 color = vec3(1.0) * ambient_color.xyz * density;
+        float bw = dot(color, vec3(0.299, 0.587, 0.114));
+        bw = pow(bw, 0.2);
         
-        gl_FragColor = vec4(color, density);
+        gl_FragColor = vec4(mix(color, vec3(bw), 0.5), density);
       }
     `;
 }
 
   send_material(gl, gpu, material) {
-    // nothing to do
+    gl.uniform4fv(gpu.ambient_color, material.ambient_color);
+    gl.uniform1f(gpu.ambient, material.ambient);
   }
 
   send_gpu_state(gl, gpu, gpu_state, model_transform) {
@@ -1134,11 +1138,12 @@ export class Cloud_Shader extends Shader {
 
   update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
     const defaults = {
-      color: color(0, 0, 0, 1),
+      ambient_color: color(0, 0, 0, 1),
+      ambient: 0,
     };
     material = Object.assign({}, defaults, material);
 
-    // this.send_material(context, gpu_addresses, material);
+    this.send_material(context, gpu_addresses, material);
     context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
 
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
