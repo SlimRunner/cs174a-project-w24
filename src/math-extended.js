@@ -16,6 +16,14 @@ export function lerp(x, y, t) {
   return (1 - t) * x + t * y;
 }
 
+export function smooth_step(x) {
+  return x * x * (3 - 2 * x);
+}
+
+export function ease_out(x) {
+  return 1 - Math.pow(1 - x, 2);
+}
+
 export class Float3 extends Vector3 {
   static create(x, y, z) {
     const v = new Float3(3);
@@ -71,6 +79,22 @@ export class Float3 extends Vector3 {
       this[1] = y_delta;
       this[2] = z_delta;
     }
+  }
+}
+
+export function get_spherical_coords(look_at, vectorized = true, clamp_phi = false) {
+  if (!vectorized) {
+    look_at = look_at.times(vec4(0, 0, -1, 0));
+  }
+
+  look_at = vec3(...look_at);
+  const xz_len = Math.hypot(look_at[0], look_at[2]);
+  const phi = Math.atan2(xz_len, look_at[1]);
+  const theta = Math.sign(look_at[2]) * Math.acos(look_at[0] / xz_len);
+  // const theta = Math.atan(look_at[2], look_at[0]);
+  return {
+    theta,
+    phi,
   }
 }
 
@@ -185,4 +209,63 @@ export function get_icosahedron_vertices() {
     }
   }
   console.log(edge_pairs);
+}
+
+class Mat3 extends Matrix {
+  // **Mat3** generates special 3x3 matrices that are useful for graphics.
+  // All the methods below return a certain 3x3 matrix.
+  static identity() {
+    return Matrix.of([1, 0, 0], [0, 1, 0], [0, 0, 1]);
+  };
+
+  static rotation(angle, x, y, z) {
+    // rotation(): Requires a scalar (angle) and a three-component axis vector.
+    const normalize = (x, y, z) => {
+      const n = Math.sqrt(x * x + y * y + z * z);
+      return [x / n, y / n, z / n]
+    }
+    let [i, j, k] = normalize(x, y, z),
+      [c, s] = [Math.cos(angle), Math.sin(angle)],
+      omc = 1.0 - c;
+    return Matrix.of([i * i * omc + c, i * j * omc - k * s, i * k * omc + j * s],
+      [i * j * omc + k * s, j * j * omc + c, j * k * omc - i * s],
+      [i * k * omc - j * s, j * k * omc + i * s, k * k * omc + c]);
+  }
+
+  static scale(x, y, z) {
+    // scale(): Builds and returns a scale matrix using x,y,z.
+    return Matrix.of([x, 0, 0],
+      [0, y, 0],
+      [0, 0, z]);
+  }
+
+  static translation(x, y) {
+    // translation(): Builds and returns a translation matrix using x,y,z.
+    return Matrix.of([1, 0, x],
+      [0, 1, y],
+      [0, 0, 1]);
+  }
+
+  static inverse(m) {
+    // inverse(): A 3x3 inverse.  Computing it is slow because of
+    // the amount of steps; call fewer times when possible.
+    const result = Mat3.identity(), m00 = m[0][0], m01 = m[0][1], m02 = m[0][2],
+      m10 = m[1][0], m11 = m[1][1], m12 = m[1][2],
+      m20 = m[2][0], m21 = m[2][1], m22 = m[2][2];
+    result[0][0] = m11 * m22 - m12 * m21;
+    result[0][1] = m02 * m21 - m01 * m22;
+    result[0][2] = m01 * m12 - m02 * m11;
+    result[1][0] = m12 * m20 - m10 * m22;
+    result[1][1] = m00 * m22 - m02 * m20;
+    result[1][2] = m02 * m10 - m00 * m12;
+    result[2][0] = m10 * m21 - m11 * m20;
+    result[2][1] = m01 * m20 - m00 * m21;
+    result[2][2] = m00 * m11 - m01 * m10;
+    // Divide by determinant and return.
+    return result.times(1 / (m00 * result[0][0] + m10 * result[0][1] + m20 * result[0][2]));
+  }
+}
+
+export function clamp(val, min, max) {
+  return Math.min(max, Math.max(min, val));
 }
