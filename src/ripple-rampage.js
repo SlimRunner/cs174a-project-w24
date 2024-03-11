@@ -577,20 +577,25 @@ export class Ripple_Rampage extends Scene {
       Mat4.identity(),
       this.materials.stone_mat
     );
-   /* this.shapes.maze_tiles.draw(
+    this.shapes.maze_tiles.draw(
       context,
       program_state,
       Mat4.identity(),
       this.materials.grass_mat
-    );*/
+    );
     //new
-    this.shapes.maze_tiles.draw(
+   /* this.shapes.maze_tiles.draw(
       context,
       program_state,
       Mat4.identity().times(Mat4.scale(50, 1, 50)),
       this.materials.grass_mat
+    );*/
+    this.shapes.maze_tiles.draw(
+      context,
+      program_state,
+      Mat4.identity().times(Mat4.translation(40,0,0)),
+      this.materials.grass_mat
     );
-
 
     if (this.addRainButton){
       this.addRaindrop(Mat4.translation(0, 0, 0));
