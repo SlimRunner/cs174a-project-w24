@@ -14,7 +14,7 @@ import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face } from "./utilities.js";
-import { lerp, ease_out, strip_rotation } from "./math-extended.js";
+import { lerp, ease_out, strip_rotation, get_spherical_coords } from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
@@ -45,6 +45,11 @@ export class Ripple_Rampage extends Scene {
     const maze_size = 60;
     const maze_height_ratio = 1.25;
     this.maze = make_maze(7, 7, 3);
+
+    // initialized in display, do not use prior
+    this.sun_color = null;
+    this.ambient_color = null;
+    this.click_sph_coords = null;
     
     this.flash_light = false;
     this.time_at_click = 0;
@@ -124,9 +129,9 @@ export class Ripple_Rampage extends Scene {
       }),
       grass_mat: new Material(new Complex_Textured(), {
         color: color(0, 0, 0, 1),
-        ambient: 0.2,
+        ambient: 0.1,
         diffusivity: 4,
-        specularity: 2,
+        specularity: 1,
         texture: new Texture(
           "textures/tiled-grass-texture.jpg",
           "LINEAR_MIPMAP_LINEAR"
@@ -142,7 +147,7 @@ export class Ripple_Rampage extends Scene {
       }),
       stone_mat: new Material(new Complex_Textured(), {
         color: color(0, 0, 0, 1),
-        ambient: 0.2,
+        ambient: 0.4,
         diffusivity: 4,
         specularity: 6,
         texture: new Texture(
@@ -269,6 +274,12 @@ export class Ripple_Rampage extends Scene {
     this.new_line();
     this.make_key_insensitive("Toggle flashlight", ["F"], () => this.flash_light = !this.flash_light);
     this.new_line();
+    this.live_string(
+      (box) => {
+        box.textContent = "sun color: " + Array.from(this.sun_color??[]).map(n => n.toFixed(2));
+        box.style.backgroundColor = `rgb(${this?.sun_color?.map((n,i) => (i===3?n:n*255)).join(',')})`;
+      }
+    );
   }
 
   cleanRipples(time){
@@ -354,6 +365,8 @@ export class Ripple_Rampage extends Scene {
     position,
     direction,
   }) {
+    this.click_sph_coords = get_spherical_coords(direction, true);
+
     if (this.captured_object) {
       // let item go
       this.captured_object = null;
@@ -410,7 +423,7 @@ export class Ripple_Rampage extends Scene {
           on_click: this.on_click
         }))
       );
-      // context.canvas.style.cursor = "none";
+      this.click_sph_coords = get_spherical_coords(program_state.camera_transform, false);
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
@@ -421,14 +434,23 @@ export class Ripple_Rampage extends Scene {
     }
 
     const time_since_click = t - this.time_at_click;
-
+    const sun_azimuth = this.click_sph_coords.theta;
+    const sun_zenith = Math.min(this.click_sph_coords.phi, Math.PI / 2);
+    const light_dir = vec4(
+      10 * Math.sin(sun_zenith) * Math.cos(sun_azimuth),
+      10 * Math.cos(sun_zenith),
+      10 * Math.sin(sun_zenith) * Math.sin(sun_azimuth),
+      0
+    );
     this.ambient_color = get_average_sky_color({
-      sun_zenith: Math.PI * 0.50 * (0.5 * Math.sin(0.2 * t) + 0.5),
-      sun_azimuth: Math.PI * ((0.2 * t) % 2.0)
+      // sun_zenith: Math.PI * 0.50 * (0.5 * Math.sin(0.2 * t) + 0.5),
+      // sun_azimuth: Math.PI * ((0.2 * t) % 2.0),
+      sun_azimuth,
+      sun_zenith,
     });
     this.sun_color = get_sun_color({
-      sun_zenith: Math.PI * 0.50 * (0.5 * Math.sin(0.2 * t) + 0.5),
-      sun_azimuth: Math.PI * ((0.2 * t) % 2.0)
+      sun_azimuth,
+      sun_zenith,
     });
 
     program_state.projection_transform = Mat4.perspective(
@@ -454,8 +476,9 @@ export class Ripple_Rampage extends Scene {
 
     this.shapes.water_surface.setScale(this.lakeTransform);
     // The parameters of the Light are: position, color, size
+    this.click_at
     program_state.lights = [
-      new Light(vec4(0, 10, 0, 0), this.sun_color, 50),
+      new Light(light_dir, this.sun_color, 50),
       new Light(vec4(...flash_lead, 1), (this.flash_light?color(1,1,1,1):color(0,0,0,1)), 3),
     ];
 
@@ -478,9 +501,18 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       Mat4.translation(cam_loc[0], cam_loc[1], cam_loc[2]),
-      this.materials.skybox
+      this.materials.skybox.override({
+        sun_azimuth: this.click_sph_coords.theta,
+        sun_zenith: Math.min(this.click_sph_coords.phi, Math.PI / 2),
+      })
     );
     GL.enable(GL.DEPTH_TEST);
+
+    const shared_overrides = {
+      color: this.ambient_color,
+      // ambient: 0.1 + 0.3 * Math.atan(Math.min(Math.PI / 2, this.click_sph_coords.phi))
+      ambient: 0.1 + 0.3 * Math.pow(2 * this.click_sph_coords.phi / Math.PI, 2)
+    };
     
     // =========================================================
     // Main scene is rendered here
@@ -532,13 +564,17 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       Mat4.identity(),
-      this.materials.stone_mat
+      this.materials.stone_mat.override({
+        ...shared_overrides
+      })
     );
     this.shapes.maze_tiles.draw(
       context,
       program_state,
       Mat4.identity(),
-      this.materials.grass_mat
+      this.materials.grass_mat.override({
+        ...shared_overrides
+      })
     );
     
     if (this.addRainButton){

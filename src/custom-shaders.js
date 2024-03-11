@@ -5,7 +5,7 @@ import {
   get_fragment_skybox_model,
 } from "./hosek-wilkie-shader-strings.js";
 
-const { vec4, color, Shader, Matrix } = tiny;
+const { vec4, color, Shader, Matrix, Vector } = tiny;
 
 export class Flat_Color_Shader extends Shader {
   // **Flat_Color** is a simple "procedural" texture shader, with
@@ -551,7 +551,10 @@ export class Hosek_Wilkie_Skybox extends Shader {
   }
 
   send_material(gl, gpu, material) {
-    // here I can pass turbidity and other props and maybe time
+    gl.uniform2fv(
+      gpu.sun_dir,
+      Vector.from([material.sun_zenith, material.sun_azimuth])
+    );
   }
 
   send_gpu_state(gl, gpu, gpu_state, model_transform) {
@@ -574,12 +577,12 @@ export class Hosek_Wilkie_Skybox extends Shader {
 
   update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
     const defaults = {
-      color: color(0, 0, 0, 1),
+      sun_azimuth: 0,
+      sun_zenith: 0
     };
     material = Object.assign({}, defaults, material);
-    context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
 
-    // this.send_material(context, gpu_addresses, material);
+    this.send_material(context, gpu_addresses, material);
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
@@ -784,7 +787,6 @@ export class Complex_Textured extends Shader {
 
   constructor(num_lights = 2) {
     super();
-    console.log(this.num_lights);
     this.num_lights = num_lights;
   }
 
@@ -796,7 +798,7 @@ export class Complex_Textured extends Shader {
       uniform float ambient, diffusivity, specularity, smoothness;
       uniform vec4 light_positions_or_vectors[N_LIGHTS], light_colors[N_LIGHTS];
       uniform float light_attenuation_factors[N_LIGHTS];
-      uniform vec4 shape_color;
+      uniform vec4 ambient_color;
       uniform vec3 squared_scale, camera_center;
 
       // Specifier "varying" means a variable's final value will be passed from the vertex shader
@@ -888,7 +890,7 @@ export class Complex_Textured extends Shader {
         vec3 N_bumped = normalize( N + (bump_color.rbg - 0.5) * 1.0 );
 
         // Compute an initial (ambient) color:
-        gl_FragColor = vec4( shape_color.xyz * ambient, shape_color.w * tex_color.w ); 
+        gl_FragColor = vec4( (ambient_color * tex_color).xyz * ambient, ambient_color.w * tex_color.w ); 
         
         // Compute the final color with contributions from lights:
         gl_FragColor.xyz += phong_model_lights(
@@ -904,7 +906,7 @@ export class Complex_Textured extends Shader {
   send_material(gl, gpu, material) {
     // send_material(): Send the desired shape-wide material qualities to the
     // graphics card, where they will tweak the Phong lighting formula.
-    gl.uniform4fv(gpu.shape_color, material.color);
+    gl.uniform4fv(gpu.ambient_color, material.color);
     gl.uniform1f(gpu.ambient, material.ambient);
     gl.uniform1f(gpu.diffusivity, material.diffusivity);
     gl.uniform1f(gpu.specularity, material.specularity);

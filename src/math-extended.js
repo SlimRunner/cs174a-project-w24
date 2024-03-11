@@ -80,6 +80,22 @@ export class Float3 extends Vector3 {
   }
 }
 
+export function get_spherical_coords(look_at, vectorized = true, clamp_phi = false) {
+  if (!vectorized) {
+    look_at = look_at.times(vec4(0, 0, -1, 0));
+  }
+
+  look_at = vec3(...look_at);
+  const xz_len = Math.hypot(look_at[0], look_at[2]);
+  const phi = Math.atan2(xz_len, look_at[1]);
+  const theta = Math.sign(look_at[2]) * Math.acos(look_at[0] / xz_len);
+  // const theta = Math.atan(look_at[2], look_at[0]);
+  return {
+    theta,
+    phi,
+  }
+}
+
 export function custom_look_at(eye_loc, at_vec, up_vec) {
   // look_at():  Produce a traditional graphics camera "lookat" matrix.
   // Each input must be a 3x1 Vector.
