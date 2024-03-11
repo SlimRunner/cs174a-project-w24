@@ -14,7 +14,7 @@ import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face } from "./utilities.js";
-import { lerp, ease_out, strip_rotation, get_spherical_coords } from "./math-extended.js";
+import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp } from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
@@ -453,7 +453,8 @@ export class Ripple_Rampage extends Scene {
 
     const time_since_click = t - this.time_at_click;
     const sun_azimuth = this.click_sph_coords.theta;
-    const sun_zenith = Math.min(this.click_sph_coords.phi, Math.PI / 2);
+    const sun_zenith = this.click_sph_coords.phi;
+    const sun_zenith_clamped = clamp(sun_zenith, 0, Math.PI / 2);
     const light_dir = vec4(
       10 * Math.sin(sun_zenith) * Math.cos(sun_azimuth),
       10 * Math.cos(sun_zenith),
@@ -461,8 +462,6 @@ export class Ripple_Rampage extends Scene {
       0
     );
     this.ambient_color = get_average_sky_color({
-      // sun_zenith: Math.PI * 0.50 * (0.5 * Math.sin(0.2 * t) + 0.5),
-      // sun_azimuth: Math.PI * ((0.2 * t) % 2.0),
       sun_azimuth,
       sun_zenith,
     });
@@ -470,6 +469,16 @@ export class Ripple_Rampage extends Scene {
       sun_azimuth,
       sun_zenith,
     });
+    this.ambient_color.forEach((n, i, a) => {a[i] = n ? n : 0;});
+    this.sun_color.forEach((n, i, a) => {a[i] = n ? n : 0;});
+
+    const flash_light_intensity = color(0,0,0,1);
+    if (this.flash_light) {
+      const intensity = 0.2 + 0.8 * Math.pow(2 * sun_zenith_clamped / Math.PI, 3);
+      flash_light_intensity[0] = intensity;
+      flash_light_intensity[1] = intensity;
+      flash_light_intensity[2] = intensity;
+    }
 
     this.fov = lerp(this.fov, this.fov_target, 0.1);
     program_state.projection_transform = Mat4.perspective(
@@ -494,11 +503,11 @@ export class Ripple_Rampage extends Scene {
     const flash_lead = cam_lead.times(vec4(0, 0, -1, 1));
 
     this.shapes.water_surface.setScale(this.lakeTransform);
+    
     // The parameters of the Light are: position, color, size
-    this.click_at
     program_state.lights = [
       new Light(light_dir, this.sun_color, 50),
-      new Light(vec4(...flash_lead, 1), (this.flash_light?color(1,1,1,1):color(0,0,0,1)), 3),
+      new Light(vec4(...flash_lead, 1), flash_light_intensity, 3),
     ];
 
     // =========================================================
@@ -521,8 +530,8 @@ export class Ripple_Rampage extends Scene {
       program_state,
       Mat4.translation(cam_loc[0], cam_loc[1], cam_loc[2]),
       this.materials.skybox.override({
-        sun_azimuth: this.click_sph_coords.theta,
-        sun_zenith: Math.min(this.click_sph_coords.phi, Math.PI / 2),
+        sun_azimuth,
+        sun_zenith,
       })
     );
     GL.enable(GL.DEPTH_TEST);
