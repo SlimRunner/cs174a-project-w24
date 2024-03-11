@@ -82,6 +82,7 @@ export class Ripple_Rampage extends Scene {
         new Shape_From_File("objects/02-mountain.obj"),
       ],
       cloud: new Shape_From_File("objects/cloud-simple.obj"),
+      well: new Shape_From_File("objects/well-shoulder.obj"),
     };
 
     // *** Materials
@@ -577,6 +578,13 @@ export class Ripple_Rampage extends Scene {
       program_state,
       this.groups.clickables[0].model_transform,
       this.materials.cloud
+    );
+
+    this.shapes.well.draw(
+      context,
+      program_state,
+      Mat4.translation(0, 0.3, 0).times(Mat4.scale(1.25, 1, 1.25)),
+      this.materials.stone_mat
     );
 
     this.shapes.maze_walls.draw(
