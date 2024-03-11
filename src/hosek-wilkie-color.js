@@ -118,7 +118,7 @@ function get_control_points_radiance(channel, albedo, turbidity, control_points)
 function get_coeffs(channel, albedo, turbidity, sun_zenith, coeffs) {
   const t = transform_sun_zenith(sun_zenith);
   for (let i = 0; i < 9; ++i) {
-  	const control_points = (Array(6)).fill(0.0);
+  	let control_points = [0, 0, 0, 0, 0, 0];
   	get_control_points(channel, albedo, turbidity, i, control_points);
   	coeffs[i] = eval_quintic_bezier(control_points, t);
   }
@@ -127,7 +127,7 @@ function get_coeffs(channel, albedo, turbidity, sun_zenith, coeffs) {
 function mean_spectral_radiance(albedo, turbidity, sun_zenith) {
   const spectral_radiance = vec3(0, 0, 0);
   for (let i = 0; i < 3; ++i) {
-  	const control_points = (Array(6)).fill(0.0);
+  	let control_points = [0, 0, 0, 0, 0, 0];
   	get_control_points_radiance(i, albedo, turbidity, control_points);
   	const t = transform_sun_zenith(sun_zenith);
   	spectral_radiance[i] = eval_quintic_bezier(control_points, t);
@@ -156,7 +156,7 @@ function F(theta, gamma, coeffs) {
 function spectral_radiance(theta, gamma, albedo, turbidity, sun_zenith) {
   const XYZ = vec3(0, 0, 0);
   for (let i = 0; i < 3; ++i) {
-  	const coeffs = (Array.from(9)).fill(0.0);
+  	let coeffs = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   	get_coeffs(i, albedo, turbidity, sun_zenith, coeffs);
   	XYZ[i] = F(theta, gamma, coeffs);
   }
@@ -168,7 +168,7 @@ function angle(z1, a1, z2, a2) {
   const dist = Math.sin(z1) * Math.cos(a1) * Math.sin(z2) * Math.cos(a2) +
     Math.sin(z1) * Math.sin(a1) * Math.sin(z2) * Math.sin(a2) +
     Math.cos(z1) * Math.cos(z2);
-  return Math.acos(clamp(dist, 1, -1));
+  return Math.acos(clamp(dist, -1, 1));
 }
 
 function sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth) {
@@ -185,14 +185,14 @@ function sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth) {
 function XYZ_to_RGB(XYZ) {
   const XYZ_to_linear = Matrix.of(
     [ 3.24096994, -1.53738318, -0.49861076],
-  	[-0.96924364,  1.8759675,   0.04155506],
-  	[ 0.55630080, -0.20397696,  1.05697151]
+    [-0.96924364,  1.8759675,   0.04155506],
+    [ 0.55630080, -0.20397696,  1.05697151]
   );
   return XYZ_to_linear.times(XYZ);
 }
 
 // Clamps color between 0 and 1 smoothly
-function expose(color, exposure) {
+function tonemap(color, exposure) {
   const two = vec3(2.0, 2.0, 2.0);
   const one = vec3(1.0, 1.0, 1.0);
 
@@ -240,13 +240,12 @@ export function get_average_sky_color({
 
   const RGB = XYZ_to_RGB(sum_of_samples);
   // adjust brightness gain
-  const col = expose(RGB, 0.08);
+  const col = tonemap(RGB, 0.1);
   
   // assign final color
   return col.map(c => clamp(c, 0, 1)).to4(1.0);
 }
 
-let sun_burn_patch = vec3(1, 1, 1);
 export function get_sun_color({
   // high noon at 0, horizon at pi/2
   sun_zenith = 0,
@@ -260,8 +259,7 @@ export function get_sun_color({
   
   const RGB = XYZ_to_RGB(sample);
   // adjust brightness gain
-  let col = expose(RGB, 0.08).map(n => Math.sqrt(clamp(n, 0, 1)));
-
+  const col = tonemap(RGB, 0.1);//.map(n => Math.sqrt(clamp(n, 0, 1)));
 
   // assign final color
   return col.to4(1.0);

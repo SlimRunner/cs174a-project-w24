@@ -1,5 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
-import { Float3, custom_look_at, min_abs, lerp } from "./math-extended.js";
+import { Float3, custom_look_at, min_abs, lerp, get_spherical_coords } from "./math-extended.js";
 
 const {
   Vector,
@@ -216,14 +216,13 @@ export class Walk_Movement extends Scene {
     this.live_string(
       (box) => {
         const rad2deg = 180 / Math.PI;
-        const elevation = Math.atan2(this.compass[1], Math.hypot(...this.compass)) * rad2deg * 2;
-        let compass = Math.atan2(this.compass[0], this.compass[2]) * rad2deg;
-        const foo = Array.from(this.compass).map(e => e.toFixed(2));
-        if (compass < 0) compass = 360 + compass;
+        let {theta, phi} = get_spherical_coords(this.compass);
+        theta *= rad2deg;
+        phi *= rad2deg;
+        if (theta < 0) theta = 360 + theta;
         box.textContent =
-          `Facing: ${compass.toFixed(2)}\n` + 
-          `Elevation: ${elevation.toFixed(2)}`;
-        // box.textContent = `${foo[0]}, ${foo[1]}, ${foo[2]}`
+          `Facing: ${theta.toFixed(2)}\n` + 
+          `Elevation: ${phi.toFixed(2)}`;
       }
     );
     this.new_line();
