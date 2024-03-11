@@ -176,6 +176,7 @@ export class Maze_Walls extends Shape {
             switch (props.axis) {
               case enum_axis.x:
                 new_tile.texture_coord.forEach((v, i, a) => {
+                  v.forEach(n => 1 - n);
                   v[1] *= height_ratio;
                 });
                 break;

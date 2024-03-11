@@ -153,7 +153,7 @@ export class Ripple_Rampage extends Scene {
         color: color(0, 0, 0, 1),
         ambient: 0.4,
         diffusivity: 4,
-        specularity: 6,
+        specularity: 3,
         texture: new Texture(
           // "textures/tiled-grass-texture.jpg",
           "textures/color_map.jpg",
