@@ -57,6 +57,9 @@ export class Ripple_Rampage extends Scene {
     
     pretty_print_grid(this.maze);
 
+    this.fov = 60;
+    this.fov_target = 60;
+
     this.transfomations = {
       click_at: Mat4.translation(-1000,-1000,-1000),
       maze: Mat4.scale(maze_size, maze_size, maze_size),
@@ -64,6 +67,7 @@ export class Ripple_Rampage extends Scene {
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
+      light_src: new defs.Subdivision_Sphere(2),
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
       maze_walls: new Maze_Walls(this.maze, this.transfomations.maze, maze_height_ratio),
@@ -97,7 +101,7 @@ export class Ripple_Rampage extends Scene {
         color: color(1, 1, 1, 1),
       }),
       ambient_phong: new Material(new Phong_Shader_2(), {
-        ambient: 0.6,
+        ambient: 0.3,
         diffusivity: 1,
         specularity: 0,
         color: color(1, 1, 1, 1),
@@ -149,7 +153,7 @@ export class Ripple_Rampage extends Scene {
         color: color(0, 0, 0, 1),
         ambient: 0.4,
         diffusivity: 4,
-        specularity: 6,
+        specularity: 3,
         texture: new Texture(
           // "textures/tiled-grass-texture.jpg",
           "textures/color_map.jpg",
@@ -230,6 +234,17 @@ export class Ripple_Rampage extends Scene {
 
     
     this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1, 1, 1));
+  }
+
+  add_mouse_controls(canvas) {
+    const wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
+    canvas.addEventListener(wheelEvent, (event) => {
+      event.preventDefault();
+      this.fov_target = Math.min(
+        70, Math.max(20, this.fov_target + (event.deltaY < 0 ? -1 : 1) * 10)
+      );
+      return false;
+    });
   }
 
   make_key_insensitive(
@@ -410,17 +425,19 @@ export class Ripple_Rampage extends Scene {
     context.time: number
     context.program_state: camera, and animation properties
     context.scratchpad: {controls: Walk_Movement}
-    context.scenes: {ripple_Overdrive: Ripple_Overdrive}
+    context.scenes: {ripple_Rampage: Ripple_Rampage}
     */
 
     // this makes clear what I am calling
     const GL = context.context;
 
     if (!context.scratchpad.controls) {
+      this.add_mouse_controls(context.canvas);
       // Add a movement controls panel to the page:
       this.children.push(
         (context.scratchpad.controls = new Walk_Movement({
-          on_click: this.on_click
+          on_click: this.on_click,
+          get_fov: () => this.fov
         }))
       );
       this.click_sph_coords = get_spherical_coords(program_state.camera_transform, false);
@@ -453,8 +470,9 @@ export class Ripple_Rampage extends Scene {
       sun_zenith,
     });
 
+    this.fov = lerp(this.fov, this.fov_target, 0.1);
     program_state.projection_transform = Mat4.perspective(
-      Math.PI * 64 / 180,
+      Math.PI * this.fov / 180,
       context.width / context.height,
       0.1,
       1000
@@ -538,7 +556,7 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      this.materials.ambient_phong
+      this.materials.ambient_phong.override({color: color(0.6, 0.4, 0.35, 1.0), diffusivity: 5})
     );
     // this.shapes.mountains[1].draw(
     //   context,
