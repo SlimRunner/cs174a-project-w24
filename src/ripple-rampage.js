@@ -136,6 +136,7 @@ export class Ripple_Rampage extends Scene {
         ambient: 0.1,
         diffusivity: 4,
         specularity: 1,
+        bumpiness: 0.5,
         texture: new Texture(
           "textures/tiled-grass-texture.jpg",
           "LINEAR_MIPMAP_LINEAR"
