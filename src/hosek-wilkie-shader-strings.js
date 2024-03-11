@@ -1,7 +1,19 @@
+/*
+I have adapted the code for this shader from a shadertoy
+https://www.shadertoy.com/view/wslfD7
+
+The changes include the conversion from the original coordinate system
+and the implementation of a vertex shader since Shadertoy provides
+always just a single fullscreen fragment.
+
+Additionally, I fix a bug the code had that it naively computed a arccos
+of 1 and -1.
+*/
+
 export function get_shared_skybox_model() {
 return(`#version 300 es
 
-precision mediump float;
+precision highp float;
 
 /*
 This source is published under the following 3-clause BSD license.
@@ -233,11 +245,6 @@ const float kHosekRadZ[] = float[](
 `);
 }
 
-/*
-I have adapted the code for this shader from a shadertoy
-with ID wslfD7
-*/
-
 export function get_vertex_skybox_model() {
 return (`
 out vec3 frag_pos;
@@ -278,16 +285,16 @@ return (`
 #define CIE_Z 2
 
 float sample_coeff(int channel, int albedo, int turbidity, int quintic_coeff, int coeff) {
-    // int index = 540 * albedo + 54 * turbidity + 9 * quintic_coeff + coeff;
-    int index =  9 * quintic_coeff + coeff;
+  // int index = 540 * albedo + 54 * turbidity + 9 * quintic_coeff + coeff;
+  int index =  9 * quintic_coeff + coeff;
   if (channel == CIE_X) return kHosekCoeffsX[index];
   if (channel == CIE_Y) return kHosekCoeffsY[index];
-    if (channel == CIE_Z) return kHosekCoeffsZ[index];
+  if (channel == CIE_Z) return kHosekCoeffsZ[index];
 }
 
 float sample_radiance(int channel, int albedo, int turbidity, int quintic_coeff) {
-    //int index = 60 * albedo + 6 * turbidity + quintic_coeff;
-    int index = quintic_coeff;
+  // int index = 60 * albedo + 6 * turbidity + quintic_coeff;
+  int index = quintic_coeff;
   if (channel == CIE_X) return kHosekRadX[index];
   if (channel == CIE_Y) return kHosekRadY[index];
   if (channel == CIE_Z) return kHosekRadZ[index];
@@ -304,7 +311,7 @@ float eval_quintic_bezier(in float[6] control_points, float t) {
   float t_inv3 = t_inv2 * t_inv;
   float t_inv4 = t_inv3 * t_inv;
   float t_inv5 = t_inv4 * t_inv;
-    
+
   return (
     control_points[0] *             t_inv5 +
     control_points[1] *  5.0 * t  * t_inv4 +
@@ -317,7 +324,7 @@ float eval_quintic_bezier(in float[6] control_points, float t) {
 
 float transform_sun_zenith(float sun_zenith) {
   float elevation = M_PI / 2.0 - sun_zenith;
-    return pow(elevation / (M_PI / 2.0), 0.333333);
+  return pow(elevation / (M_PI / 2.0), 0.333333);
 }
 
 void get_control_points(int channel, int albedo, int turbidity, int coeff, out float[6] control_points) {
@@ -331,7 +338,7 @@ void get_control_points_radiance(int channel, int albedo, int turbidity, out flo
 void get_coeffs(int channel, int albedo, int turbidity, float sun_zenith, out float[9] coeffs) {
   float t = transform_sun_zenith(sun_zenith);
   for (int i = 0; i < 9; ++i) {
-    float control_points[6]; 
+    float control_points[6];
     get_control_points(channel, albedo, turbidity, i, control_points);
     coeffs[i] = eval_quintic_bezier(control_points, t);
   }
@@ -341,7 +348,7 @@ vec3 mean_spectral_radiance(int albedo, int turbidity, float sun_zenith) {
   vec3 spectral_radiance;
   for (int i = 0; i < 3; ++i) {
     float control_points[6];
-        get_control_points_radiance(i, albedo, turbidity, control_points);
+    get_control_points_radiance(i, albedo, turbidity, control_points);
     float t = transform_sun_zenith(sun_zenith);
     spectral_radiance[i] = eval_quintic_bezier(control_points, t);
   }
@@ -378,15 +385,16 @@ vec3 spectral_radiance(float theta, float gamma, int albedo, int turbidity, floa
 
 // Returns angle between two directions defined by zentih and azimuth angles
 float angle(float z1, float a1, float z2, float a2) {
-  return acos(
-    sin(z1) * cos(a1) * sin(z2) * cos(a2) +
+  float dist = sin(z1) * cos(a1) * sin(z2) * cos(a2) +
     sin(z1) * sin(a1) * sin(z2) * sin(a2) +
-    cos(z1) * cos(z2));
+    cos(z1) * cos(z2);
+  dist = clamp(dist, 0.0, 1.0);
+  return acos(dist);
 }
 
 vec3 sample_sky(float view_zenith, float view_azimuth, float sun_zenith, float sun_azimuth) {
   float gamma = angle(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
-  float theta = view_zenith; 
+  float theta = view_zenith;
   return spectral_radiance(theta, gamma, ALBEDO, TURBIDITY, sun_zenith) * mean_spectral_radiance(ALBEDO, TURBIDITY, sun_zenith);
 }
 
@@ -401,14 +409,14 @@ vec3 XYZ_to_RGB(vec3 XYZ) {
 }
 
 // Clamps color between 0 and 1 smoothly
-vec3 expose(vec3 color, float exposure) {
+vec3 tonemap(vec3 color, float exposure) {
   return vec3(2.0) / (vec3(1.0) + exp(-exposure * color)) - vec3(1.0);
 }
 
 in vec3 fragCoord;
 out vec4 fragColor;
 
-uniform float animation_time;
+uniform vec2 sun_dir;
 
 void main() {
   // how I computed the azimuth and zenith since it differs from how it was used in the source
@@ -417,24 +425,25 @@ void main() {
   // https://gamedev.stackexchange.com/a/87307
 
   // high noon at 0, horizon at pi/2
-  float sun_zenith = M_PI * 0.50 * (0.5 * sin(0.2 * animation_time) + 0.5);
+  float sun_zenith = sun_dir.x;
   // starts at x-axis moves clockwise towards z at pi/2
-  float sun_azimuth = M_PI * mod(0.2 * animation_time, 2.0);
+  float sun_azimuth = sun_dir.y;
   
   // same as sun zenith but for the sky
   float view_zenith = atan(length(fragCoord.xz), max(0.0, fragCoord.y));
   // same as sun azimuth but for the sky
   float view_azimuth = atan(fragCoord.z, fragCoord.x);
+  // float view_azimuth = sign(fragCoord.z) * acos(fragCoord.x / length(fragCoord.xz));
 
   // compute color using hosek-wilkie model in XYZ color space
   vec3 XYZ = sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
   // transform back to RGB
   vec3 RGB = XYZ_to_RGB(XYZ);
   // adjust brightness gain
-  vec3 col = expose(RGB, 0.08);
-  
+  vec3 col = tonemap(RGB, 0.1);
+
   // assign final color
-  fragColor = vec4(col, 1.0);
+  fragColor = clamp(vec4(col, 1.0), 0.0, 1.0);
 }
 `);
 }
