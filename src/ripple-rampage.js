@@ -10,7 +10,7 @@ import {
   Flat_Color_Shader,
   Cloud_Shader,
 } from "./custom-shaders.js";
-import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles } from "./custom-shapes.js";
+import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face } from "./utilities.js";
@@ -72,7 +72,7 @@ export class Ripple_Rampage extends Scene {
       sphere: new Flat_Sphere(3),
       maze_walls: new Maze_Walls(this.maze, this.transfomations.maze, maze_height_ratio),
       maze_tiles: new Maze_Tiles(this.maze, this.transfomations.maze),
-      water_surface: new Lake_Mesh(),
+      water_surface: new Circle(),
       raindrop: new defs.Subdivision_Sphere(4),
       skybox: new defs.Cube(),
       gui_box: new defs.Square(),

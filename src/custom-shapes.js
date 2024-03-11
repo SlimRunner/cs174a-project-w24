@@ -10,6 +10,10 @@ const {
   Mat4,
 } = tiny;
 
+const {
+  Grid_Patch
+} = defs;
+
 // this square is flat instead of vertical
 export class Square extends Shape {
   // **Square** demonstrates two triangles that share vertices.  On any planar surface, the
@@ -263,4 +267,63 @@ export class Maze_Tiles extends Shape {
     });
   }
 
+}
+
+class Surface_Of_Revolution extends Grid_Patch {
+  // SURFACE OF REVOLUTION: Produce a curved "sheet" of triangles with rows and columns.
+  // Begin with an input array of points, defining a 1D path curving through 3D space --
+  // now let each such point be a row.  Sweep that whole curve around the Z axis in equal
+  // steps, stopping and storing new points along the way; let each step be a column. Now
+  // we have a flexible "generalized cylinder" spanning an area until total_curvature_angle.
+  constructor(
+    rows,
+    columns,
+    points,
+    texture_coord_range,
+    total_curvature_angle = 2 * Math.PI
+  ) {
+    const row_operation = (i) => Grid_Patch.sample_array(points, i),
+      column_operation = (j, p) =>
+        Mat4.rotation(total_curvature_angle / columns, 0, 1, 0)
+          .times(p.to4(1))
+          .to3();
+
+    super(rows, columns, row_operation, column_operation, texture_coord_range);
+  }
+}
+
+class Regular_2D_Polygon extends Surface_Of_Revolution {
+  // Approximates a flat disk / circle
+  constructor(rows, columns) {
+      super(rows, columns, Vector3.cast([0, 0, 0], [1, 0, 0]));
+      this.arrays.normal = this.arrays.normal.map(x => vec3(0, 1, 0));
+      this.arrays.texture_coord.forEach((x, i, a) => a[i] = this.arrays.position[i].map(x => x / 2 + .5).slice(0, 2));
+  }
+}
+
+export class Circle extends Regular_2D_Polygon {
+  constructor() {
+    super(1, 15);
+
+    this.arrays.normal
+  }
+
+  setScale(transform){
+    this.xScale = transform[0][0];
+    this.zScale = transform[2][2];
+  }
+
+  isInside(x, z){
+    let counter = 0;
+    for (let i = 1; i < this.arrays.position.length-1; i++) {
+      let edgep1x = this.arrays.position[i][0]*this.xScale;
+      let edgep1z = this.arrays.position[i][2]*this.zScale;
+      let edgep2x = this.arrays.position[i+1][0]*this.xScale;
+      let edgep2z = this.arrays.position[i+1][2]*this.zScale;
+      if (((z < edgep1z) != (z < edgep2z)) && (x < edgep1x + ((z-edgep1z)/(edgep2z-edgep1z))*(edgep2x-edgep1x))){
+        counter += 1;
+      }
+    }
+    return (counter%2)===1;
+  }
 }
