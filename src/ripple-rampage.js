@@ -7,12 +7,15 @@ import {
   Crosshair_Shader,
   Ripple_Shader,
   Complex_Textured,
+  Flat_Color_Shader,
+  Cloud_Shader,
 } from "./custom-shaders.js";
-import { Square, Lake_Mesh } from "./custom-shapes.js";
+import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { check_scene_intersection } from "./utilities.js";
-import { strip_rotation } from "./math-extended.js";
+import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face } from "./utilities.js";
+import { lerp, ease_out, strip_rotation, get_spherical_coords } from "./math-extended.js";
+import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
   Vector,
@@ -39,17 +42,36 @@ export class Ripple_Rampage extends Scene {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
 
+    const maze_size = 60;
+    const maze_height_ratio = 1.25;
+    this.maze = make_maze(7, 7, 3);
+
+    // initialized in display, do not use prior
+    this.sun_color = null;
+    this.ambient_color = null;
+    this.click_sph_coords = null;
+    
+    this.flash_light = false;
+    this.time_at_click = 0;
+    this.clicked_on_frame = 0;
+    
+    pretty_print_grid(this.maze);
+
+    this.fov = 60;
+    this.fov_target = 60;
+
     this.transfomations = {
-      large_floor_mat: Mat4.translation(0, 0, 0).times(Mat4.scale(100, 1, 100)),
-      click_at: Mat4.identity()
+      click_at: Mat4.translation(-1000,-1000,-1000),
+      maze: Mat4.scale(maze_size, maze_size, maze_size),
     }
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
+      light_src: new defs.Subdivision_Sphere(2),
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
-      large_floor: new Square(),
-      small_square: new Square(),
+      maze_walls: new Maze_Walls(this.maze, this.transfomations.maze, maze_height_ratio),
+      maze_tiles: new Maze_Tiles(this.maze, this.transfomations.maze),
       water_surface: new Lake_Mesh(),
       raindrop: new defs.Subdivision_Sphere(4),
       skybox: new defs.Cube(),
@@ -61,12 +83,11 @@ export class Ripple_Rampage extends Scene {
       ],
       cloud: new Shape_From_File("objects/cloud-simple.obj"),
     };
-    this.shapes.large_floor.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(40)));
-    this.shapes.small_square.arrays.texture_coord.forEach((v, i, a) => (a[i] = v.times(4)));
 
     // *** Materials
     this.materials = {
       // standard has max specularity and diffuse, zero  ambient
+      solid_white: new Material(new Flat_Color_Shader(), {color: color(1, 1, 1, 1)}),
       matte: new Material(new defs.Phong_Shader(), {
         ambient: 0,
         diffusivity: 1,
@@ -80,7 +101,7 @@ export class Ripple_Rampage extends Scene {
         color: color(1, 1, 1, 1),
       }),
       ambient_phong: new Material(new Phong_Shader_2(), {
-        ambient: 0.6,
+        ambient: 0.3,
         diffusivity: 1,
         specularity: 0,
         color: color(1, 1, 1, 1),
@@ -92,15 +113,18 @@ export class Ripple_Rampage extends Scene {
         specularity: 0.4,
         color: color(1, 1, 1, 1),
       }),
-      uv: new Material(new UV_Shader()),
-      matte: new Material(new defs.Phong_Shader(), {
+      cloud: new Material(new Cloud_Shader(), {
         ambient: 0,
         diffusivity: 1,
-        specularity: 0,
-        color: color(1, 1, 1, 1),
+        specularity: 0.4,
+        color: hex_color("#000000")
       }),
+      uv: new Material(new UV_Shader()),
       skybox: new Material(new Hosek_Wilkie_Skybox()),
-      ui_crosshair: new Material(new Crosshair_Shader()),
+      ui_crosshair: new Material(new Crosshair_Shader(), {
+        fg_color: color(1, 1, 1, 0.4),
+        bg_color: color(0, 0, 0, 0.8),
+      }),
       ripple: new Material(new Ripple_Shader(), {
         color: hex_color("#ADD8E6"),
         size: 2.0,
@@ -109,9 +133,9 @@ export class Ripple_Rampage extends Scene {
       }),
       grass_mat: new Material(new Complex_Textured(), {
         color: color(0, 0, 0, 1),
-        ambient: 0.2,
+        ambient: 0.1,
         diffusivity: 4,
-        specularity: 2,
+        specularity: 1,
         texture: new Texture(
           "textures/tiled-grass-texture.jpg",
           "LINEAR_MIPMAP_LINEAR"
@@ -127,9 +151,9 @@ export class Ripple_Rampage extends Scene {
       }),
       stone_mat: new Material(new Complex_Textured(), {
         color: color(0, 0, 0, 1),
-        ambient: 0.2,
+        ambient: 0.4,
         diffusivity: 4,
-        specularity: 6,
+        specularity: 3,
         texture: new Texture(
           // "textures/tiled-grass-texture.jpg",
           "textures/color_map.jpg",
@@ -169,9 +193,19 @@ export class Ripple_Rampage extends Scene {
         {
           // this object is temporary
           // to be replaced by walls
-          id: "large_floor",
-          object: this.shapes.large_floor,
-          model_transform: this.transfomations.large_floor_mat,
+          id: "maze_walls",
+          object: this.shapes.maze_walls,
+          model_transform: Mat4.identity(),
+          capturable: false,
+          interactive: false,
+          max_distance: Infinity,
+        },
+        {
+          // this object is temporary
+          // to be replaced by walls
+          id: "maze_tiles",
+          object: this.shapes.maze_tiles,
+          model_transform: Mat4.identity(),
           capturable: false,
           interactive: true,
           max_distance: Infinity,
@@ -202,6 +236,46 @@ export class Ripple_Rampage extends Scene {
     this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1, 1, 1));
   }
 
+  add_mouse_controls(canvas) {
+    const wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
+    canvas.addEventListener(wheelEvent, (event) => {
+      event.preventDefault();
+      this.fov_target = Math.min(
+        70, Math.max(20, this.fov_target + (event.deltaY < 0 ? -1 : 1) * 10)
+      );
+      return false;
+    });
+  }
+
+  make_key_insensitive(
+    description,
+    shortcut_combination,
+    callback,
+    color = "#6E6460",
+    release_event,
+    recipient = this,
+    parent = this.control_panel
+  ) {
+    this.key_triggered_button(
+      description,
+      shortcut_combination.map((s) => s.length > 1? s: s.toUpperCase()),
+      callback,
+      color,
+      release_event,
+      recipient,
+      parent
+    );
+    this.key_triggered_button(
+      description,
+      shortcut_combination.map((s) => s.length > 1? s: s.toLowerCase()),
+      callback,
+      color,
+      release_event,
+      recipient,
+      parent
+    );
+  }
+
   make_control_panel() {
     // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
     // this.key_triggered_button(
@@ -213,6 +287,14 @@ export class Ripple_Rampage extends Scene {
     this.new_line();
     this.key_triggered_button("Add Raindrop", ["Shift", "W"], () => this.addRainButton = true);
     this.new_line();
+    this.make_key_insensitive("Toggle flashlight", ["F"], () => this.flash_light = !this.flash_light);
+    this.new_line();
+    this.live_string(
+      (box) => {
+        box.textContent = "sun color: " + Array.from(this.sun_color??[]).map(n => n.toFixed(2));
+        box.style.backgroundColor = `rgb(${this?.sun_color?.map((n,i) => (i===3?n:n*255)).join(',')})`;
+      }
+    );
   }
 
   cleanRipples(time){
@@ -298,6 +380,8 @@ export class Ripple_Rampage extends Scene {
     position,
     direction,
   }) {
+    this.click_sph_coords = get_spherical_coords(direction, true);
+
     if (this.captured_object) {
       // let item go
       this.captured_object = null;
@@ -314,6 +398,7 @@ export class Ripple_Rampage extends Scene {
       this.transfomations.click_at[0][3] = intersection[0];
       this.transfomations.click_at[1][3] = intersection[1];
       this.transfomations.click_at[2][3] = intersection[2];
+      this.clicked_on_frame = true;
 
       const is_capturable = this.groups.clickables[mesh_index].capturable;
       const is_in_range = distance <= (
@@ -340,43 +425,60 @@ export class Ripple_Rampage extends Scene {
     context.time: number
     context.program_state: camera, and animation properties
     context.scratchpad: {controls: Walk_Movement}
-    context.scenes: {ripple_Overdrive: Ripple_Overdrive}
+    context.scenes: {ripple_Rampage: Ripple_Rampage}
     */
 
     // this makes clear what I am calling
     const GL = context.context;
 
     if (!context.scratchpad.controls) {
+      this.add_mouse_controls(context.canvas);
       // Add a movement controls panel to the page:
       this.children.push(
         (context.scratchpad.controls = new Walk_Movement({
-          on_click: this.on_click
+          on_click: this.on_click,
+          get_fov: () => this.fov
         }))
       );
-      // context.canvas.style.cursor = "none";
+      this.click_sph_coords = get_spherical_coords(program_state.camera_transform, false);
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
 
+    if (this.clicked_on_frame) {
+      this.clicked_on_frame = false;
+      this.time_at_click = t;
+    }
+
+    const time_since_click = t - this.time_at_click;
+    const sun_azimuth = this.click_sph_coords.theta;
+    const sun_zenith = Math.min(this.click_sph_coords.phi, Math.PI / 2);
+    const light_dir = vec4(
+      10 * Math.sin(sun_zenith) * Math.cos(sun_azimuth),
+      10 * Math.cos(sun_zenith),
+      10 * Math.sin(sun_zenith) * Math.sin(sun_azimuth),
+      0
+    );
+    this.ambient_color = get_average_sky_color({
+      // sun_zenith: Math.PI * 0.50 * (0.5 * Math.sin(0.2 * t) + 0.5),
+      // sun_azimuth: Math.PI * ((0.2 * t) % 2.0),
+      sun_azimuth,
+      sun_zenith,
+    });
+    this.sun_color = get_sun_color({
+      sun_azimuth,
+      sun_zenith,
+    });
+
+    this.fov = lerp(this.fov, this.fov_target, 0.1);
     program_state.projection_transform = Mat4.perspective(
-      Math.PI * 64 / 180,
+      Math.PI * this.fov / 180,
       context.width / context.height,
       0.1,
       1000
     );
 
     let model_transform = Mat4.identity();
-
-    this.shapes.water_surface.setScale(this.lakeTransform);
-    // The parameters of the Light are: position, color, size
-    program_state.lights = [
-      new Light(vec4(-5, 300, -5, 1), color(1,1,1,1), 10000),
-      new Light(vec4(5, 6, 5, 1), color(1,1,1,1), 20),
-    ];
-
-    // =========================================================
-    // Drawing environment elements (distant)
-    // Be careful of the order
     
     const CMT = program_state.camera_transform;
     const cam_loc = CMT
@@ -388,10 +490,27 @@ export class Ripple_Rampage extends Scene {
       [CMT[2][0], 0, CMT[2][2], CMT[2][3]    ],
       [        0, 0,         0,         1],
     ]);
+    const flash_lead = cam_lead.times(vec4(0, 0, -1, 1));
+
+    this.shapes.water_surface.setScale(this.lakeTransform);
+    // The parameters of the Light are: position, color, size
+    this.click_at
+    program_state.lights = [
+      new Light(light_dir, this.sun_color, 50),
+      new Light(vec4(...flash_lead, 1), (this.flash_light?color(1,1,1,1):color(0,0,0,1)), 3),
+    ];
+
+    // =========================================================
+    // Drawing environment elements (distant)
+    // Be careful of the order
 
     // TODO: prevent distortion when looking up or down
     if (this.captured_object && this.captured_object.capturable) {
-      this.captured_object.model_transform = cam_lead.times(Mat4.translation(0, 0, -3)).map((x, i) => Vector.from(this.captured_object.model_transform[i]).mix(x, 0.1))
+      this.captured_object.model_transform = strip_rotation(cam_lead
+        .times(Mat4.translation(0, 0, -3))
+        .map((x, i) => Vector.from(
+          this.captured_object.model_transform[i]).mix(x, 0.1)
+        ));
     }
 
     // the following box ignores the depth buffer
@@ -400,25 +519,27 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       Mat4.translation(cam_loc[0], cam_loc[1], cam_loc[2]),
-      this.materials.skybox
+      this.materials.skybox.override({
+        sun_azimuth: this.click_sph_coords.theta,
+        sun_zenith: Math.min(this.click_sph_coords.phi, Math.PI / 2),
+      })
     );
     GL.enable(GL.DEPTH_TEST);
+
+    const shared_overrides = {
+      color: this.ambient_color,
+      // ambient: 0.1 + 0.3 * Math.atan(Math.min(Math.PI / 2, this.click_sph_coords.phi))
+      ambient: 0.1 + 0.3 * Math.pow(2 * this.click_sph_coords.phi / Math.PI, 2)
+    };
     
     // =========================================================
     // Main scene is rendered here
-
-    this.shapes.large_floor.draw(
-      context,
-      program_state,
-      // model_transform.times(Mat4.translation(0, 0, 0)).times(Mat4.scale(100, 1, 100)),
-      this.transfomations.large_floor_mat,
-      this.materials.grass_mat
-    );
     
     this.shapes.water_surface.draw(
       context,
       program_state,
       this.lakeTransform,
+      // this.materials.matte.override(this.ambient_color)
       this.materials.matte.override(hex_color("#00FFFF"))
     );
     
@@ -435,52 +556,65 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      this.materials.ambient_phong
+      this.materials.ambient_phong.override({color: color(0.6, 0.4, 0.35, 1.0), diffusivity: 5})
     );
-    this.shapes.mountains[1].draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 6)),
-      this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
-    );
-    this.shapes.mountains[2].draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 6)),
-      this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
-    );
+    // this.shapes.mountains[1].draw(
+    //   context,
+    //   program_state,
+    //   model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 6)),
+    //   this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
+    // );
+    // this.shapes.mountains[2].draw(
+    //   context,
+    //   program_state,
+    //   model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 6)),
+    //   this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
+    // );
 
     this.shapes.cloud.draw(
       context,
       program_state,
       this.groups.clickables[0].model_transform,
-      this.materials.uv
+      this.materials.cloud
     );
 
-    this.shapes.small_square.draw(
+    this.shapes.maze_walls.draw(
       context,
       program_state,
-      model_transform
-        .times(Mat4.translation(18, 0.01, 0))
-        .times(Mat4.scale(-8, 0.01, 8))
-        ,
-      this.materials.stone_mat
+      Mat4.identity(),
+      this.materials.stone_mat.override({
+        ...shared_overrides
+      })
     );
-    
-    // how to place something where you clicked
-    this.shapes.sphere.draw(
+    this.shapes.maze_tiles.draw(
       context,
       program_state,
-      this.transfomations.click_at.times(Mat4.scale(0.25,0.25,0.25)),
-      this.materials.matte
-    )
+      Mat4.identity(),
+      this.materials.grass_mat.override({
+        ...shared_overrides
+      })
+    );
     
     if (this.addRainButton){
       this.addRaindrop(strip_rotation(this.groups.clickables[0].model_transform));
       this.addRainButton = false;
     }
     this.displayRaindrops(context, program_state)
-    this.cleanRaindrops(t);    
+    this.cleanRaindrops(t);
+
+    if (time_since_click < 0.5) {
+      const t_smooth = ease_out(time_since_click * 2);
+      const sp_size = lerp(0, 0.25, t_smooth);
+      // how to place something where you clicked
+      this.shapes.sphere.draw(
+        context,
+        program_state,
+        this.transfomations.click_at.times(Mat4.scale(sp_size ,sp_size ,sp_size)),
+        this.materials.solid_white.override({
+          color: color(1, 1, 1, lerp(1, 0, t_smooth))
+        })
+      );
+    }
     // =========================================================
     // Below this line only GUI elements must be rendered.
     

@@ -1,4 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
+import { get_square_face, enum_axis } from "./utilities.js";
 
 const {
   Vector,
@@ -6,6 +7,7 @@ const {
   vec3,
   vec,
   Shape,
+  Mat4,
 } = tiny;
 
 // this square is flat instead of vertical
@@ -100,4 +102,165 @@ export class Lake_Mesh extends Shape {
     }
     return (counter%2)===1;
   }
+}
+
+export class Maze_Walls extends Shape {
+  constructor(grid, model_matrix, height_ratio = 1) {
+    super("position", "normal", "texture_coord");
+    
+    const grid_size_x = grid[0].length;
+    const grid_size_z = grid.length;
+
+    this.arrays.position = [];
+    this.arrays.normal = [];
+    this.arrays.texture_coord = [];
+    this.indices = [];
+
+    let new_tile = null;
+    for (let z = 0; z < grid_size_z; ++z) {
+      for (let x = 0; x < grid_size_x; ++x) {
+        [
+          {
+            pos: {x: 0, z: 0},
+            axis: enum_axis.y,
+            location: vec3(x, 0.5, z),
+            side_length: 1,
+            positive_normal: true, // looks to +y
+          },
+          {
+            pos: {x: 1, z: 0},
+            axis: enum_axis.x,
+            location: vec3(x + 0.5, 0, z),
+            side_length: 1,
+            positive_normal: true, // looks to +x
+          },
+          {
+            pos: {x: -1, z: 0},
+            axis: enum_axis.x,
+            location: vec3(x - 0.5, 0, z),
+            side_length: 1,
+            positive_normal: false, // looks to -x
+          },
+          {
+            pos: {x: 0, z: 1},
+            axis: enum_axis.z,
+            location: vec3(x, 0, z + 0.5),
+            side_length: 1,
+            positive_normal: true, // looks to +z
+          },
+          {
+            pos: {x: 0, z: -1},
+            axis: enum_axis.z,
+            location: vec3(x, 0, z - 0.5),
+            side_length: 1,
+            positive_normal: false, // looks to -z
+          },
+        ].forEach(square => {
+          const {pos, ...props} = square;
+
+          if (
+            props.axis === enum_axis.y && !grid[z][x] ||
+            0 <= x + pos.x && x + pos.x < grid_size_x &&
+            0 <= z + pos.z && z + pos.z < grid_size_z &&
+            !grid[z][x] && grid[z + pos.z][x + pos.x]
+          ) {
+            new_tile = get_square_face({
+              ...props,
+              index_shift: this.arrays.position.length,
+            });
+  
+            this.arrays.position.push(...new_tile.position);
+            this.arrays.normal.push(...new_tile.normal);
+            this.indices.push(...new_tile.indices);
+
+            switch (props.axis) {
+              case enum_axis.x:
+                new_tile.texture_coord.forEach((v, i, a) => {
+                  v.forEach(n => 1 - n);
+                  v[1] *= height_ratio;
+                });
+                break;
+              case enum_axis.y:
+                // uv coords are coorect as-is
+                break;
+              case enum_axis.z:
+                new_tile.texture_coord.forEach((v, i, a) => {
+                  v[0] *= height_ratio;
+                });
+                break;
+              default:
+                break;
+            }
+            
+            this.arrays.texture_coord.push(...new_tile.texture_coord);
+          }
+        });
+      }
+    }
+
+    const norm_scalar = 1 / Math.max(grid_size_x, grid_size_z);
+    const norm_matrix = Mat4.translation(0.5, 0.5, 0.5);
+    norm_matrix.pre_multiply(Mat4.scale(norm_scalar, height_ratio * norm_scalar, norm_scalar));
+    norm_matrix.pre_multiply(Mat4.translation(-0.5, 0, -0.5));
+    norm_matrix.pre_multiply(model_matrix);
+
+    this.arrays.position.forEach((v, i, a) => {
+      a[i] = norm_matrix.times(v.to4(1)).to3();
+    });
+  }
+
+}
+
+export class Maze_Tiles extends Shape {
+  constructor(grid, model_matrix, height_ratio = 1) {
+    super("position", "normal", "texture_coord");
+    
+    const grid_size_x = grid[0].length;
+    const grid_size_z = grid.length;
+
+    this.arrays.position = [];
+    this.arrays.normal = [];
+    this.arrays.texture_coord = [];
+    this.indices = [];
+
+    let new_tile = null;
+    for (let z = 0; z < grid_size_z; ++z) {
+      for (let x = 0; x < grid_size_x; ++x) {
+        [
+          {
+            pos: {x: 0, z: 0},
+            axis: enum_axis.y,
+            location: vec3(x, -0.5, z),
+            side_length: 1,
+            positive_normal: true, // looks to +y
+          },
+        ].forEach(square => {
+          const {pos, ...props} = square;
+
+          if (grid[z][x] ) {
+            new_tile = get_square_face({
+              ...props,
+              index_shift: this.arrays.position.length,
+            });
+  
+            this.arrays.position.push(...new_tile.position);
+            this.arrays.normal.push(...new_tile.normal);
+            this.indices.push(...new_tile.indices);
+            this.arrays.texture_coord.push(...new_tile.texture_coord);
+          }
+        });
+      }
+    }
+
+    const norm_scalar = 1 / Math.max(grid_size_x, grid_size_z);
+    const norm_matrix = Mat4.translation(0.5, 0.5, 0.5);
+    norm_matrix.pre_multiply(Mat4.scale(norm_scalar, height_ratio * norm_scalar, norm_scalar));
+    norm_matrix.pre_multiply(Mat4.translation(-0.5, 0, -0.5));
+    norm_matrix.pre_multiply(model_matrix);
+
+    this.arrays.position.forEach((v, i, a) => {
+      a[i] = norm_matrix.times(v.to4(1)).to3();
+    });
+  }
+
 }
