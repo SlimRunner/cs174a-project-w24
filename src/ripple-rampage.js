@@ -465,8 +465,6 @@ export class Ripple_Rampage extends Scene {
 
     const time_since_click = t - this.time_at_click;
     const {sun_azimuth, sun_zenith} = calculate_sun_position(this.hour_of_day, 0, 1);
-    // const sun_azimuth = this.click_sph_coords.theta;
-    // const sun_zenith = this.click_sph_coords.phi;
     const sun_zenith_clamped = clamp(sun_zenith, 0, Math.PI / 2);
     const light_dir = vec4(
       10 * Math.sin(sun_zenith) * Math.cos(sun_azimuth),
@@ -551,8 +549,7 @@ export class Ripple_Rampage extends Scene {
 
     const shared_overrides = {
       ambient_color: this.ambient_color,
-      // ambient: 0.1 + 0.3 * Math.atan(Math.min(Math.PI / 2, this.click_sph_coords.phi))
-      ambient: 0.1 + 0.3 * Math.pow(2 * this.click_sph_coords.phi / Math.PI, 2)
+      ambient: 0.1 + 0.3 * Math.pow(2 * sun_zenith / Math.PI, 2)
     };
     
     // =========================================================
