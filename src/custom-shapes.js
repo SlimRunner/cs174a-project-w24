@@ -47,7 +47,7 @@ export class Square extends Shape {
 
 export class Lake_Mesh extends Shape {
   constructor({
-    subdivisions = 40,
+    subdivisions = 16,
     phase = 1.88,
   } = {}) {
     super("position", "normal", "texture_coord");
@@ -72,8 +72,8 @@ export class Lake_Mesh extends Shape {
       const theta = TAU * alpha;
       const r_delta = displacement_function(alpha, phase);
 
-      const x = Math.cos(theta) * r_delta;
-      const z = Math.sin(theta) * r_delta;
+      const x = Math.cos(theta);
+      const z = Math.sin(theta);
 
       this.arrays.position.push(vec3(x, 0, z));
       this.arrays.normal.push(vec3(0, 1, 0));
@@ -311,6 +311,10 @@ export class Circle extends Regular_2D_Polygon {
   setScale(transform){
     this.xScale = transform[0][0];
     this.zScale = transform[2][2];
+  }
+
+  printData(){
+    console.log(this.indices)
   }
 
   isInside(x, z){
