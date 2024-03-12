@@ -175,25 +175,7 @@ export class Ripple_Rampage extends Scene {
           "LINEAR_MIPMAP_LINEAR"
         ),
       }),
-      text_image1: new Material(new defs.Textured_Phong(1), {
-        ambient: 1, 
-        diffusivity: 0,
-        specularity: 0,
-        texture: new Texture("assets/text.png")
-      }),
-      text_image2: new Material(new defs.Textured_Phong(1), {
-        ambient: 1, 
-        diffusivity: 0,
-        specularity: 0,
-        texture: new Texture("assets/text.png")
-      }),
-      text_image3: new Material(new defs.Textured_Phong(1), {
-        ambient: 1, 
-        diffusivity: 0,
-        specularity: 0,
-        texture: new Texture("assets/text.png")
-      }),
-      text_image4: new Material(new defs.Textured_Phong(1), {
+      text_image: new Material(new defs.Textured_Phong(1), {
         ambient: 1, 
         diffusivity: 0,
         specularity: 0,
@@ -708,25 +690,25 @@ export class Ripple_Rampage extends Scene {
         context,
         program_state,
         model_transform.times(Mat4.translation(-6.5, 1, -8)).times(Mat4.scale(0.2, 0.5, 0.5)),
-        this.materials.text_image1
+        this.materials.text_image
       );
       this.shapes.text.draw(
         context,
         program_state,
         model_transform.times(Mat4.translation(6.5, 1, 8)).times(Mat4.scale(0.2, 0.5, 0.5)).times(Mat4.rotation(1*3.14, 0, 1, 0)),
-        this.materials.text_image2
+        this.materials.text_image
       );
       this.shapes.text.draw(
         context,
         program_state,
         model_transform.times(Mat4.translation(8, 1, -6.5)).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(-0.5*3.14, 0, 1, 0)),
-        this.materials.text_image3
+        this.materials.text_image
       );
       this.shapes.text.draw(
         context,
         program_state,
         model_transform.times(Mat4.translation(-8, 1, 6.5)).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(0.5*3.14, 0, 1, 0)),
-        this.materials.text_image4
+        this.materials.text_image
       );
     }
     else{
