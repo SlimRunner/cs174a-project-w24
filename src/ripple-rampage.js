@@ -66,6 +66,8 @@ export class Ripple_Rampage extends Scene {
       click_at: Mat4.translation(-1000,-1000,-1000),
       maze: Mat4.scale(maze_size, maze_size, maze_size),
       cloud: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+      well: Mat4.translation(0, 0.3, 0).times(Mat4.scale(1.25, 1, 1.25)),
+      lake: Mat4.translation(0, 0.01, 0).times(Mat4.scale(1.2, 1, 1.2)),
     }
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
@@ -222,6 +224,26 @@ export class Ripple_Rampage extends Scene {
           interactive: true,
           max_distance: Infinity,
         },
+        {
+          // this object is temporary
+          // to be replaced by walls
+          id: "well",
+          object: this.shapes.well,
+          model_transform: this.transfomations.well,
+          capturable: false,
+          interactive: false,
+          max_distance: Infinity,
+        },
+        {
+          // this object is temporary
+          // to be replaced by walls
+          id: "water_surface",
+          object: this.shapes.water_surface,
+          model_transform: this.transfomations.lake,
+          capturable: false,
+          interactive: false,
+          max_distance: Infinity,
+        },
       ]
     }
 
@@ -247,7 +269,7 @@ export class Ripple_Rampage extends Scene {
     this.rainVelocity = [];
     this.rainTransform = [];
     
-    this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1.2, 1, 1.2));
+    this.lakeTransform = this.transfomations.lake;
 
     this.resetGame = false;
     this.resetGameTime = 0;
@@ -651,7 +673,7 @@ export class Ripple_Rampage extends Scene {
     this.shapes.well.draw(
       context,
       program_state,
-      Mat4.translation(0, 0.3, 0).times(Mat4.scale(1.25, 1, 1.25)),
+      this.transfomations.well,
       this.materials.stone_mat
     );
 
