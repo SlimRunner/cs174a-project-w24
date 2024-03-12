@@ -1093,22 +1093,28 @@ export class Cloud_Shader extends Shader {
       }
 
       void main() {
-        vec2 uv = gl_FragCoord.xy;
-        float u= gl_FragCoord.x;
-        float v= gl_FragCoord.y;
-
-        float multiplier=1.0;
-
-        float distance_to_center = sqrt(pow(u-0.5,2.0) + pow(v-0.5,2.0));
-        multiplier=distance_to_center*0.1;
-        float an_floor= floor(animation_time);
-        float density = noise(uv * 5.0 + 0.1*multiplier) + (0.01*multiplier) ;
+        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+      
+        float noiseValue = 0.0;
+        float amplitude = 1.0;
+        float frequency = 0.5;
+        for (int i = 0; i < 2; i++) { 
+          noiseValue += amplitude * noise(uv * frequency);
+          amplitude *= 0.5;
+          frequency *= 2.0;
+        }
         
-        vec3 color = 1.4* vec3(1.0) * ambient_color.xyz * density;
+        float softNoise = smoothstep(0.4, 0.6, noiseValue); 
+        
+        //vec3 color = vec3(softNoise) * ambient_color.xyz;
+        vec3 color= ambient_color.xyz;
         float bw = dot(color, vec3(0.299, 0.587, 0.114));
         bw = pow(bw, 0.2);
         
-        gl_FragColor = vec4(mix(color, vec3(bw), 0.5), density);
+        
+        float alpha = smoothstep(0.2, 0.8, softNoise)+ 0.8; 
+       // alpha=1.5; // if we don't want varying densities anymore
+        gl_FragColor = vec4(mix(color, vec3(bw), 0.5), alpha);
       }
     `;
 }
