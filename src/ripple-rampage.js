@@ -10,7 +10,7 @@ import {
   Flat_Color_Shader,
   Cloud_Shader,
 } from "./custom-shaders.js";
-import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles } from "./custom-shapes.js";
+import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour } from "./utilities.js";
@@ -84,6 +84,7 @@ export class Ripple_Rampage extends Scene {
         new Shape_From_File("objects/02-mountain.obj"),
       ],
       cloud: new Shape_From_File("objects/cloud-simple.obj"),
+      well: new Shape_From_File("objects/well-shoulder.obj"),
     };
 
     // *** Materials
@@ -236,7 +237,7 @@ export class Ripple_Rampage extends Scene {
     this.rainTransform = [];
 
     
-    this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1, 1, 1));
+    this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1.2, 1, 1.2));
   }
 
   add_mouse_controls(canvas) {
@@ -333,11 +334,12 @@ export class Ripple_Rampage extends Scene {
   displayRipples(context, program_state){
     for (let i = 0; i < this.ripplesBirth.length; i++) {
       this.rippleShader.setBirth(this.ripplesBirth[i]);
+      let waterHeight = this.lakeTransform[1][3];
+      this.rippleLoc[i][1][3] = waterHeight;
       this.shapes.water_surface.draw(
         context,
         program_state,
         this.rippleLoc[i],
-        // this.materials.uv
         this.rippleMaterial
       );  
     }
@@ -347,29 +349,34 @@ export class Ripple_Rampage extends Scene {
     if (this.rainTransform.length === 0){
       return;
     }
-    let notClean = true;
-    while (notClean && this.rainTransform.length > 0){
-      let rainx = this.rainTransform[0][0][3];
-      let rainy = this.rainTransform[0][1][3];
-      let rainz = this.rainTransform[0][2][3];
-      if (rainy < 0.0){
-        this.rainVelocity.shift();
-        this.rainTransform.shift();
-        let insideShape = this.shapes.water_surface.isInside(rainx, rainz);
-        if(insideShape){
-          this.addRipple(time, Mat4.translation(rainx, 0, rainz));
-          this.lakeTransform[0][0] = this.lakeTransform[0][0] + 0.01;
-          this.lakeTransform[2][2] = this.lakeTransform[2][2] + 0.01;
-        }
+    
+    let numDrops = this.rainTransform.length;
+    let index = 0;
+    while (index < numDrops){
+      let rainx = this.rainTransform[index][0][3];
+      let rainy = this.rainTransform[index][1][3];
+      let rainz = this.rainTransform[index][2][3];
+      let waterHeight = this.lakeTransform[1][3];
+      if ((rainy < waterHeight) && this.shapes.water_surface.isInside(rainx, rainz)){
+        this.rainVelocity.splice(index, 1);
+        this.rainTransform.splice(index, 1);
+        this.addRipple(time, Mat4.translation(rainx, 0, rainz));
+        this.lakeTransform[1][3] = this.lakeTransform[1][3] + 0.001;
+        index = index-1;
+        numDrops = numDrops-1;
       }
-      else{
-        notClean = false;
+      else if (rainy < 0){
+        this.rainVelocity.splice(index, 1);
+        this.rainTransform.splice(index, 1);
+        index = index-1;
+        numDrops = numDrops-1;
       }
+      index = index+1;
     }
   }
 
   addRaindrop(loc){
-    this.rainTransform.push(loc.times(Mat4.translation(0, 2, 0).times(Mat4.scale(0.01, 0.08, 0.01))));
+    this.rainTransform.push(loc.times(Mat4.scale(0.01, 0.08, 0.01)));
     this.rainVelocity.push(7);
   }
 
@@ -563,9 +570,18 @@ export class Ripple_Rampage extends Scene {
       this.materials.matte.override(hex_color("#00FFFF"))
     );
     
+    this.shapes.maze_tiles.draw(
+      context,
+      program_state,
+      Mat4.identity(),
+      this.materials.grass_mat.override({
+        ...shared_overrides
+      })
+    );
+    
     GL.disable(GL.DEPTH_TEST);
     if (this.addRippleButton){
-      this.addRipple(t, Mat4.translation(0, 0, 1));
+      this.addRipple(t, Mat4.translation(0, 0, 0));
       this.addRippleButton = false;
     }
     this.displayRipples(context, program_state)
@@ -602,6 +618,13 @@ export class Ripple_Rampage extends Scene {
       })
     );
 
+    this.shapes.well.draw(
+      context,
+      program_state,
+      Mat4.translation(0, 0.3, 0).times(Mat4.scale(1.25, 1, 1.25)),
+      this.materials.stone_mat
+    );
+
     this.shapes.maze_walls.draw(
       context,
       program_state,
@@ -610,17 +633,9 @@ export class Ripple_Rampage extends Scene {
         ...shared_overrides
       })
     );
-    this.shapes.maze_tiles.draw(
-      context,
-      program_state,
-      Mat4.identity(),
-      this.materials.grass_mat.override({
-        ...shared_overrides
-      })
-    );
     
     if (this.addRainButton){
-      this.addRaindrop(Mat4.translation(0, 0, 0));
+      this.addRaindrop(Mat4.translation(0, 2, 0));
       this.addRainButton = false;
     }
     this.displayRaindrops(context, program_state)
