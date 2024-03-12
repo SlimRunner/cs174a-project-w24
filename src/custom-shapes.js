@@ -55,13 +55,6 @@ export class Lake_Mesh extends Shape {
     // https://www.desmos.com/calculator/jdyl5xpkbs
 
     const TAU = Math.PI * 2;
-    const displacement_function = (x, theta) => {
-      return (
-        0.1  * Math.sin( 3 * TAU * (x +     theta)) +
-        0.04 * Math.sin(18 * TAU * (x + 2 * theta)) +
-        0.1  * Math.sin( 7 * TAU * (x + 3 * theta)) + 1
-      );
-    }
     
     this.arrays.position = [vec3(0, 0, 0)];
     this.arrays.normal = [vec3(0, 1, 0)]; // y-up
@@ -70,7 +63,6 @@ export class Lake_Mesh extends Shape {
     for (let i = 0; i <= subdivisions; ++i) {
       const alpha = i / subdivisions
       const theta = TAU * alpha;
-      const r_delta = displacement_function(alpha, phase);
 
       const x = Math.cos(theta);
       const z = Math.sin(theta);
