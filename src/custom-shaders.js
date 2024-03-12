@@ -1104,7 +1104,7 @@ export class Cloud_Shader extends Shader {
         float an_floor= floor(animation_time);
         float density = noise(uv * 5.0 + 0.1*multiplier) + (0.01*multiplier) ;
         
-        vec3 color = vec3(1.0) * ambient_color.xyz * density;
+        vec3 color = 1.4* vec3(1.0) * ambient_color.xyz * density;
         float bw = dot(color, vec3(0.299, 0.587, 0.114));
         bw = pow(bw, 0.2);
         
