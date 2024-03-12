@@ -19,6 +19,7 @@ const ALBEDO = 1;
 const TURBIDITY = 3;
 
 const M_PI = Math.PI;
+const H_PI = Math.PI / 2;
 const CIE_X = 0;
 const CIE_Y = 1;
 const CIE_Z = 2;
@@ -224,6 +225,7 @@ export function get_average_sky_color({
   // https://www.desmos.com/3d/912f2ca12c
   const N_SAMPLES = 51;
   const AVG_SAMPLE_RATE = 1 / N_SAMPLES;
+  const sun_zenith_safe = clamp(sun_zenith, 0.0, H_PI);
   let t = 0;
   let view_zenith = 0;
   let view_azimuth = 0;
@@ -234,7 +236,7 @@ export function get_average_sky_color({
     view_zenith = Math.sqrt(t) * M_PI / 2;
     // same as sun azimuth but for the sky
     view_azimuth = 11 * M_PI * 2 * t;
-    sample = sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
+    sample = sample_sky(view_zenith, view_azimuth, sun_zenith_safe, sun_azimuth);
     sum_of_samples.add_by(sample.times(AVG_SAMPLE_RATE));
   }
 
@@ -242,6 +244,11 @@ export function get_average_sky_color({
   // adjust brightness gain
   const col = tonemap(RGB, 0.1);
   
+  if (sun_zenith > H_PI) {
+    let alpha = 1.0 / (10.0 * (sun_zenith - H_PI) + 1.0);
+    col.scale_by(alpha);
+  }
+
   // assign final color
   return col.map(c => clamp(c, 0, 1)).to4(1.0);
 }
@@ -252,15 +259,21 @@ export function get_sun_color({
   // starts at x-axis moves clockwise towards z at pi/2
   sun_azimuth = 0
 }) {
-  let view_zenith = sun_zenith;
-  let view_azimuth = sun_azimuth;
+  const sun_zenith_safe = clamp(sun_zenith, 0.0, H_PI);
+  const view_zenith = sun_zenith_safe;
+  const view_azimuth = sun_azimuth;
   
-  const sample = sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
+  const sample = sample_sky(view_zenith, view_azimuth, sun_zenith_safe, sun_azimuth);
   
   const RGB = XYZ_to_RGB(sample);
   // adjust brightness gain
-  const col = tonemap(RGB, 0.1);//.map(n => Math.sqrt(clamp(n, 0, 1)));
+  const col = tonemap(RGB, 0.1);
+
+  if (sun_zenith > H_PI) {
+    const alpha = 1.0 / (10.0 * (sun_zenith - H_PI) + 1.0);
+    col.scale_by(alpha * alpha);
+  }
 
   // assign final color
-  return col.to4(1.0);
+  return col.map(c => clamp(c, 0, 1)).to4(1.0);
 }

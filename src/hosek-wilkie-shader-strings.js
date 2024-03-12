@@ -280,6 +280,7 @@ return (`
 #define TURBIDITY 3
 
 #define M_PI 3.1415926535897932384626433832795
+#define H_PI 1.5707963267948966192313216916398
 #define CIE_X 0
 #define CIE_Y 1
 #define CIE_Z 2
@@ -323,8 +324,8 @@ float eval_quintic_bezier(in float[6] control_points, float t) {
 }
 
 float transform_sun_zenith(float sun_zenith) {
-  float elevation = M_PI / 2.0 - sun_zenith;
-  return pow(elevation / (M_PI / 2.0), 0.333333);
+  float elevation = H_PI - sun_zenith;
+  return pow(elevation / (H_PI), 0.333333);
 }
 
 void get_control_points(int channel, int albedo, int turbidity, int coeff, out float[6] control_points) {
@@ -426,6 +427,7 @@ void main() {
 
   // high noon at 0, horizon at pi/2
   float sun_zenith = sun_dir.x;
+  float sun_zenith_safe = clamp(sun_zenith, 0.0, H_PI);
   // starts at x-axis moves clockwise towards z at pi/2
   float sun_azimuth = sun_dir.y;
   
@@ -436,11 +438,16 @@ void main() {
   // float view_azimuth = sign(fragCoord.z) * acos(fragCoord.x / length(fragCoord.xz));
 
   // compute color using hosek-wilkie model in XYZ color space
-  vec3 XYZ = sample_sky(view_zenith, view_azimuth, sun_zenith, sun_azimuth);
+  vec3 XYZ = sample_sky(view_zenith, view_azimuth, sun_zenith_safe, sun_azimuth);
   // transform back to RGB
   vec3 RGB = XYZ_to_RGB(XYZ);
   // adjust brightness gain
   vec3 col = tonemap(RGB, 0.1);
+
+  if (sun_zenith > H_PI) {
+    float alpha = 1.0 / (10.0 * (sun_zenith - H_PI) + 1.0);
+    col = col * alpha;
+  }
 
   // assign final color
   fragColor = clamp(vec4(col, 1.0), 0.0, 1.0);
