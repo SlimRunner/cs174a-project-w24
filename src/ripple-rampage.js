@@ -10,7 +10,7 @@ import {
   Flat_Color_Shader,
   Cloud_Shader,
 } from "./custom-shaders.js";
-import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle } from "./custom-shapes.js";
+import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle, Text_Line } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour } from "./utilities.js";
@@ -85,6 +85,7 @@ export class Ripple_Rampage extends Scene {
       ],
       cloud: new Shape_From_File("objects/cloud-simple.obj"),
       well: new Shape_From_File("objects/well-shoulder.obj"),
+      text: new Text_Line(50),
     };
 
     // *** Materials
@@ -174,6 +175,30 @@ export class Ripple_Rampage extends Scene {
           "LINEAR_MIPMAP_LINEAR"
         ),
       }),
+      text_image1: new Material(new defs.Textured_Phong(1), {
+        ambient: 1, 
+        diffusivity: 0,
+        specularity: 0,
+        texture: new Texture("assets/text.png")
+      }),
+      text_image2: new Material(new defs.Textured_Phong(1), {
+        ambient: 1, 
+        diffusivity: 0,
+        specularity: 0,
+        texture: new Texture("assets/text.png")
+      }),
+      text_image3: new Material(new defs.Textured_Phong(1), {
+        ambient: 1, 
+        diffusivity: 0,
+        specularity: 0,
+        texture: new Texture("assets/text.png")
+      }),
+      text_image4: new Material(new defs.Textured_Phong(1), {
+        ambient: 1, 
+        diffusivity: 0,
+        specularity: 0,
+        texture: new Texture("assets/text.png")
+      }),
     };
 
     this.groups = {
@@ -235,9 +260,11 @@ export class Ripple_Rampage extends Scene {
     this.addRainButton = false;
     this.rainVelocity = [];
     this.rainTransform = [];
-
     
     this.lakeTransform = Mat4.translation(0, 0.01, 0).times(Mat4.scale(1.2, 1, 1.2));
+
+    this.resetGame = false;
+    this.resetGameTime = 0;
   }
 
   add_mouse_controls(canvas) {
@@ -663,5 +690,48 @@ export class Ripple_Rampage extends Scene {
       model_transform.times(Mat4.scale(10, 1, 10)),
       this.materials.ui_crosshair
     );
+
+
+
+    //end of game logic
+    if (!this.resetGame){
+      if (this.lakeTransform[1][3] > 0.4){
+        this.resetGameTime = t;
+        this.resetGame = true;
+      }
+    }
+    else if (t < this.resetGameTime + 10.0){
+      //logic for locking player position
+      this.lakeTransform[1][3] = 0.4 - 0.39 * (t-this.resetGameTime) / 10.0;
+      this.shapes.text.set_string('GAME OVER, Please Stand Back as the Maze Resets', context.context);
+      this.shapes.text.draw(
+        context,
+        program_state,
+        model_transform.times(Mat4.translation(-6.5, 1, -8)).times(Mat4.scale(0.2, 0.5, 0.5)),
+        this.materials.text_image1
+      );
+      this.shapes.text.draw(
+        context,
+        program_state,
+        model_transform.times(Mat4.translation(6.5, 1, 8)).times(Mat4.scale(0.2, 0.5, 0.5)).times(Mat4.rotation(1*3.14, 0, 1, 0)),
+        this.materials.text_image2
+      );
+      this.shapes.text.draw(
+        context,
+        program_state,
+        model_transform.times(Mat4.translation(8, 1, -6.5)).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(-0.5*3.14, 0, 1, 0)),
+        this.materials.text_image3
+      );
+      this.shapes.text.draw(
+        context,
+        program_state,
+        model_transform.times(Mat4.translation(-8, 1, 6.5)).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(0.5*3.14, 0, 1, 0)),
+        this.materials.text_image4
+      );
+    }
+    else{
+      this.resetGame = false;
+      //reset maze, respawn cloud, unlock player position
+    }
   }
 }

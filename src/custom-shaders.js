@@ -748,12 +748,13 @@ export class Ripple_Shader extends Shader {
           }
           else
           {
-            intensity.w = intensity.w / 1.4;
+            intensity.w = intensity.w / 3.0;
           }
           if (relativeTime > 1.0)
           {
             intensity.w = intensity.w / relativeTime;
           }
+          intensity.w = intensity.w * 0.5;
           gl_FragColor = intensity;
         }`;
     }
