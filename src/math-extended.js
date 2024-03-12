@@ -22,6 +22,11 @@ export function ease_out(x) {
   return 1 - Math.pow(1 - x, 2);
 }
 
+export function mod(n, m) {
+  const rem = n % m;
+  return n * m >= 0 ? rem : rem ? rem + m : 0;
+}
+
 export class Float3 extends Vector3 {
   static create(x, y, z) {
     const v = new Float3(3);
@@ -219,4 +224,37 @@ class Mat3 extends Matrix {
 
 export function clamp(val, min, max) {
   return Math.min(max, Math.max(min, val));
+}
+
+export function calculate_sun_position(hour_of_day, axis_tilt, month) {
+  // Convert hour of the day to fractional hours (0 to 23.9999)
+  const fractional_hour = (hour_of_day) % 24;
+
+  // Convert month of the year to fractional months (0 to 11.9999)
+  const fractional_month = month % 12;
+
+  // Calculate declination angle (δ) of the sun
+  const declination = 23.44 * Math.sin(2 * Math.PI * (284 + fractional_month) / 365);
+
+  // Calculate hour angle (H) of the sun
+  const hour_angle = (fractional_hour - 12) * 15;
+
+  // Calculate zenith angle (θ) of the sun
+  const sun_zenith = Math.acos(
+      Math.sin(axis_tilt) * Math.sin(declination * Math.PI / 180) +
+      Math.cos(axis_tilt) * Math.cos(declination * Math.PI / 180) * Math.cos(hour_angle * Math.PI / 180)
+  );
+
+  // Calculate azimuth angle (φ) of the sun
+  let sun_azimuth = Math.atan2(
+      -Math.sin(hour_angle * Math.PI / 180),
+      Math.tan(axis_tilt) * Math.cos(declination) - Math.sin(declination) * Math.cos(hour_angle * Math.PI / 180)
+  );
+
+  // Convert azimuth to the range [0, 2π)
+  if (sun_azimuth < 0) {
+      sun_azimuth += 2 * Math.PI;
+  }
+
+  return { sun_zenith, sun_azimuth };
 }
