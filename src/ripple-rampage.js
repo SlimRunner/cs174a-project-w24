@@ -13,8 +13,8 @@ import {
 import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face } from "./utilities.js";
-import { lerp, ease_out, strip_rotation, get_spherical_coords } from "./math-extended.js";
+import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour } from "./utilities.js";
+import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp, calculate_sun_position } from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
@@ -50,6 +50,8 @@ export class Ripple_Rampage extends Scene {
     this.sun_color = null;
     this.ambient_color = null;
     this.click_sph_coords = null;
+    this.hour_of_day = 12;
+    this.time_speed = 1;
     
     this.flash_light = false;
     this.time_at_click = 0;
@@ -105,8 +107,8 @@ export class Ripple_Rampage extends Scene {
         ambient: 0.3,
         diffusivity: 1,
         specularity: 0,
-        color: color(1, 1, 1, 1),
-        ambient_color: hex_color("#d8e8ff"),
+        color: hex_color("#a06354"),
+        ambient_color: color(0, 0, 0, 1),
       }),
       gouraud: new Material(new Gouraud_Shader(), {
         ambient: 0,
@@ -133,7 +135,7 @@ export class Ripple_Rampage extends Scene {
         birth: 0.0,
       }),
       grass_mat: new Material(new Complex_Textured(), {
-        color: color(0, 0, 0, 1),
+        ambient_color: color(0, 0, 0, 1),
         ambient: 0.1,
         diffusivity: 4,
         specularity: 1,
@@ -291,12 +293,21 @@ export class Ripple_Rampage extends Scene {
     this.new_line();
     this.make_key_insensitive("Toggle flashlight", ["F"], () => this.flash_light = !this.flash_light);
     this.new_line();
-    this.live_string(
-      (box) => {
-        box.textContent = "sun color: " + Array.from(this.sun_color??[]).map(n => n.toFixed(2));
-        box.style.backgroundColor = `rgb(${this?.sun_color?.map((n,i) => (i===3?n:n*255)).join(',')})`;
-      }
-    );
+    this.key_triggered_button("Rewind", [","], () => {
+      this.time_speed = -10;
+    }, undefined, () => {
+      this.time_speed = 1;
+    });
+    this.key_triggered_button("Fast Forward", ["."], () => {
+      this.time_speed = 10;
+    }, undefined, () => {
+      this.time_speed = 1;
+    });
+    this.new_line();
+    this.new_line();
+    this.live_string(box => {
+      box.textContent = "Time: " + prettify_hour(this.hour_of_day)
+    });
   }
 
   cleanRipples(time){
@@ -452,6 +463,7 @@ export class Ripple_Rampage extends Scene {
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
+    this.hour_of_day = (this.hour_of_day + this.time_speed * dt * 0.25) % 24;
 
     if (this.clicked_on_frame) {
       this.clicked_on_frame = false;
@@ -459,8 +471,8 @@ export class Ripple_Rampage extends Scene {
     }
 
     const time_since_click = t - this.time_at_click;
-    const sun_azimuth = this.click_sph_coords.theta;
-    const sun_zenith = Math.min(this.click_sph_coords.phi, Math.PI / 2);
+    const {sun_azimuth, sun_zenith} = calculate_sun_position(this.hour_of_day, 0, 1);
+    const sun_zenith_clamped = clamp(sun_zenith, 0, Math.PI / 2);
     const light_dir = vec4(
       10 * Math.sin(sun_zenith) * Math.cos(sun_azimuth),
       10 * Math.cos(sun_zenith),
@@ -468,8 +480,6 @@ export class Ripple_Rampage extends Scene {
       0
     );
     this.ambient_color = get_average_sky_color({
-      // sun_zenith: Math.PI * 0.50 * (0.5 * Math.sin(0.2 * t) + 0.5),
-      // sun_azimuth: Math.PI * ((0.2 * t) % 2.0),
       sun_azimuth,
       sun_zenith,
     });
@@ -477,6 +487,16 @@ export class Ripple_Rampage extends Scene {
       sun_azimuth,
       sun_zenith,
     });
+    this.ambient_color.forEach((n, i, a) => {a[i] = n ? n : 0;});
+    this.sun_color.forEach((n, i, a) => {a[i] = n ? n : 0;});
+
+    const flash_light_intensity = color(0,0,0,1);
+    if (this.flash_light) {
+      const intensity = 0.2 + 0.8 * Math.pow(2 * sun_zenith_clamped / Math.PI, 3);
+      flash_light_intensity[0] = intensity;
+      flash_light_intensity[1] = intensity;
+      flash_light_intensity[2] = intensity;
+    }
 
     this.fov = lerp(this.fov, this.fov_target, 0.1);
     program_state.projection_transform = Mat4.perspective(
@@ -501,11 +521,11 @@ export class Ripple_Rampage extends Scene {
     const flash_lead = cam_lead.times(vec4(0, 0, -1, 1));
 
     this.shapes.water_surface.setScale(this.lakeTransform);
+    
     // The parameters of the Light are: position, color, size
-    this.click_at
     program_state.lights = [
       new Light(light_dir, this.sun_color, 50),
-      new Light(vec4(...flash_lead, 1), (this.flash_light?color(1,1,1,1):color(0,0,0,1)), 3),
+      new Light(vec4(...flash_lead, 1), flash_light_intensity, 3),
     ];
 
     // =========================================================
@@ -528,16 +548,15 @@ export class Ripple_Rampage extends Scene {
       program_state,
       Mat4.translation(cam_loc[0], cam_loc[1], cam_loc[2]),
       this.materials.skybox.override({
-        sun_azimuth: this.click_sph_coords.theta,
-        sun_zenith: Math.min(this.click_sph_coords.phi, Math.PI / 2),
+        sun_azimuth,
+        sun_zenith,
       })
     );
     GL.enable(GL.DEPTH_TEST);
 
     const shared_overrides = {
-      color: this.ambient_color,
-      // ambient: 0.1 + 0.3 * Math.atan(Math.min(Math.PI / 2, this.click_sph_coords.phi))
-      ambient: 0.1 + 0.3 * Math.pow(2 * this.click_sph_coords.phi / Math.PI, 2)
+      ambient_color: this.ambient_color,
+      ambient: 0.1 + 0.3 * Math.pow(2 * sun_zenith / Math.PI, 2)
     };
     
     // =========================================================
@@ -573,7 +592,9 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      this.materials.ambient_phong.override({color: color(0.6, 0.4, 0.35, 1.0), diffusivity: 5})
+      this.materials.ambient_phong.override({
+        ...shared_overrides
+      })
     );
     // this.shapes.mountains[1].draw(
     //   context,
@@ -592,7 +613,9 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       this.groups.clickables[0].model_transform,
-      this.materials.cloud
+      this.materials.cloud.override({
+        ...shared_overrides
+      })
     );
 
     this.shapes.well.draw(
