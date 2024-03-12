@@ -103,7 +103,16 @@ export class Lake_Mesh extends Shape {
 export class Maze_Walls extends Shape {
   constructor(grid, model_matrix, height_ratio = 1) {
     super("position", "normal", "texture_coord");
-    
+
+    this.arrays.position = [];
+    this.arrays.normal = [];
+    this.arrays.texture_coord = [];
+    this.indices = [];
+
+    this.generate(grid, model_matrix, height_ratio);
+  }
+
+  generate(grid, model_matrix, height_ratio = 1) {
     const grid_size_x = grid[0].length;
     const grid_size_z = grid.length;
 

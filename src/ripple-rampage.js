@@ -37,14 +37,18 @@ const {
 
 const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version();
 
+function make_7x7_maze() {
+  return make_maze(7, 7, 3);
+}
+
 export class Ripple_Rampage extends Scene {
   constructor() {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
 
     const maze_size = 60;
-    const maze_height_ratio = 1.25;
-    this.maze = make_maze(7, 7, 3);
+    this.maze_height_ratio = 1.25;
+    this.maze = make_7x7_maze();
 
     // initialized in display, do not use prior
     this.sun_color = null;
@@ -75,7 +79,7 @@ export class Ripple_Rampage extends Scene {
       light_src: new defs.Subdivision_Sphere(2),
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
-      maze_walls: new Maze_Walls(this.maze, this.transfomations.maze, maze_height_ratio),
+      maze_walls: new Maze_Walls(this.maze, this.transfomations.maze, this.maze_height_ratio),
       maze_tiles: new Maze_Tiles(this.maze, this.transfomations.maze),
       water_surface: new Lake_Mesh(),
       raindrop: new defs.Subdivision_Sphere(4),
@@ -273,6 +277,13 @@ export class Ripple_Rampage extends Scene {
 
     this.resetGame = false;
     this.resetGameTime = 0;
+
+    window.resetMaze = () => {
+      this.maze = make_7x7_maze();
+      pretty_print_grid(this.maze);
+      this.shapes.maze_walls = new Maze_Walls(this.maze, this.transfomations.maze, this.maze_height_ratio);
+      this.shapes.maze_tiles = new Maze_Tiles(this.maze, this.transfomations.maze);
+    }
   }
 
   add_mouse_controls(canvas) {
@@ -322,18 +333,17 @@ export class Ripple_Rampage extends Scene {
     //   ["Meta", "key"],
     //   callback
     // );
-    this.key_triggered_button("Add Ripple", ["Shift", "R"], () => this.addRippleButton = true);
-    this.new_line();
-    this.key_triggered_button("Add Raindrop", ["Shift", "W"], () => this.addRainButton = true);
+    this.make_key_insensitive("Make it rain", ["R"], () => this.addRainButton = true);
     this.new_line();
     this.make_key_insensitive("Toggle flashlight", ["F"], () => this.flash_light = !this.flash_light);
     this.new_line();
-    this.key_triggered_button("Rewind", [","], () => {
+    this.make_key_insensitive("Rewind Time", ["Z"], () => {
       this.time_speed = -10;
     }, undefined, () => {
       this.time_speed = 1;
     });
-    this.key_triggered_button("Fast Forward", ["."], () => {
+    this.new_line();
+    this.make_key_insensitive("Fast Forward Time", ["X"], () => {
       this.time_speed = 10;
     }, undefined, () => {
       this.time_speed = 1;
@@ -716,8 +726,6 @@ export class Ripple_Rampage extends Scene {
       this.materials.ui_crosshair
     );
 
-
-
     //end of game logic
     if (!this.resetGame){
       if (this.lakeTransform[1][3] > 0.4){
@@ -755,6 +763,21 @@ export class Ripple_Rampage extends Scene {
       );
     }
     else{
+      this.maze = make_7x7_maze();
+      console.log("resetting maze");
+      // this does not work because I do not know how to resend the maze to the shader
+      // this.shapes.maze_walls.generate(this.maze, this.transfomations.maze, this.maze_height_ratio);
+      this.shapes.maze_walls = new Maze_Walls(this.maze, this.transfomations.maze, this.maze_height_ratio);
+      this.shapes.maze_tiles = new Maze_Tiles(this.maze, this.transfomations.maze);
+
+      for (const clickable of this.groups.clickables){
+        if (clickable.id === "maze_walls"){
+          clickable.object = this.shapes.maze_walls;
+        }
+        else if (clickable.id === "maze_tiles"){
+          clickable.object = this.shapes.maze_tiles;
+        }
+      }
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position
     }
