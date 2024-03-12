@@ -14,7 +14,7 @@ import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle, Text_Line } from "./
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
 import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour } from "./utilities.js";
-import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp, calculate_sun_position } from "./math-extended.js";
+import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp, calculate_sun_position, get_3x3_determinant } from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
@@ -65,6 +65,7 @@ export class Ripple_Rampage extends Scene {
     this.transfomations = {
       click_at: Mat4.translation(-1000,-1000,-1000),
       maze: Mat4.scale(maze_size, maze_size, maze_size),
+      cloud: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
     }
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
@@ -196,7 +197,7 @@ export class Ripple_Rampage extends Scene {
         {
           id: "cloud",
           object: this.shapes.cloud,
-          model_transform: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+          model_transform: this.transfomations.cloud,
           capturable: true,
           interactive: false,
           max_distance: 15,
@@ -223,6 +224,9 @@ export class Ripple_Rampage extends Scene {
         },
       ]
     }
+
+    window.clickables = this.groups.clickables;
+    window.transfomations = this.transfomations;
 
     this.captured_object = null;
     this.on_click = this.on_click.bind(this);
@@ -384,12 +388,25 @@ export class Ripple_Rampage extends Scene {
     }
   }
 
-  addRaindrop(loc){
-    this.rainTransform.push(loc.times(Mat4.scale(0.01, 0.08, 0.01)));
+  addRaindrop(){
+    const scale = get_3x3_determinant(this.transfomations.cloud);
+    console.log(scale);
+    const rand_radius = Math.sqrt(Math.random()) * scale;
+    const rand_angle = Math.random() * 2 * Math.PI;
+    const x = rand_radius * Math.cos(rand_angle);
+    const z = rand_radius * Math.sin(rand_angle);
+    const loc = strip_rotation(
+      this.transfomations.cloud
+    ).times(Mat4.translation(x, 0, z));
+    this.rainTransform.push(
+      loc.times(
+        Mat4.scale(0.01, 0.08, 0.01)
+      )
+    );
     this.rainVelocity.push(7);
   }
 
-  displayRaindrops(context, program_state){
+  displayRaindrops(context, program_state, ambient_override = {}){
     for (let i = 0; i < this.rainTransform.length; i++) {
       let dt = program_state.animation_delta_time / 1000;
       this.rainVelocity[i] = this.rainVelocity[i] + 7*9.8 * dt;
@@ -398,7 +415,10 @@ export class Ripple_Rampage extends Scene {
         context,
         program_state,
         this.rainTransform[i],
-        this.materials.ambient_phong.override(hex_color("#FFFFFF"))
+        this.materials.ambient_phong.override({
+          color: color(1, 1, 1, 0.75),
+          ...ambient_override
+        })
       );  
     }
   }
@@ -543,11 +563,12 @@ export class Ripple_Rampage extends Scene {
 
     // TODO: prevent distortion when looking up or down
     if (this.captured_object && this.captured_object.capturable) {
-      this.captured_object.model_transform = strip_rotation(cam_lead
+      const new_transform = strip_rotation(cam_lead
         .times(Mat4.translation(0, 0, -3))
         .map((x, i) => Vector.from(
           this.captured_object.model_transform[i]).mix(x, 0.1)
         ));
+        this.captured_object.model_transform.forEach((x, i, a) => a[i] = new_transform[i]);
     }
 
     // the following box ignores the depth buffer
@@ -644,10 +665,10 @@ export class Ripple_Rampage extends Scene {
     );
     
     if (this.addRainButton){
-      this.addRaindrop(strip_rotation(this.groups.clickables[0].model_transform));
+      this.addRaindrop();
       this.addRainButton = false;
     }
-    this.displayRaindrops(context, program_state)
+    this.displayRaindrops(context, program_state, shared_overrides)
     this.cleanRaindrops(t);
 
     if (time_since_click < 0.5) {

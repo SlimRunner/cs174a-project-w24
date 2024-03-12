@@ -167,6 +167,22 @@ export function strip_rotation(mat) {
   );
 }
 
+export function splice_rotation(mat) {
+  return Matrix.of(
+    [mat[0][0], mat[0][1], mat[0][2], 0],
+    [mat[1][0], mat[1][1], mat[1][2], 0],
+    [mat[2][0], mat[2][1], mat[2][2], 0],
+    [0, 0, 0, 1],
+  );
+}
+
+export function get_3x3_determinant(mat) {
+  const m00 = mat[0][0], m01 = mat[0][1], m02 = mat[0][2],
+        m10 = mat[1][0], m11 = mat[1][1], m12 = mat[1][2],
+        m20 = mat[2][0], m21 = mat[2][1], m22 = mat[2][2];
+  return m00 * m11 * m22 + m01 * m12 * m20 + m02 * m10 * m21 - m02 * m11 * m20 - m01 * m10 * m22 - m00 * m12 * m21;
+}
+
 class Mat3 extends Matrix {
   // **Mat3** generates special 3x3 matrices that are useful for graphics.
   // All the methods below return a certain 3x3 matrix.
