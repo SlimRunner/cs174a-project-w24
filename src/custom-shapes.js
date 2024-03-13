@@ -112,14 +112,18 @@ export class Maze_Walls extends Shape {
     this.generate(grid, model_matrix, height_ratio);
   }
 
+  clear() {
+    this.arrays.position.splice(0, this.arrays.position.length);
+    this.arrays.normal.splice(0, this.arrays.normal.length);
+    this.arrays.texture_coord.splice(0, this.arrays.texture_coord.length);;
+    this.indices.splice(0, this.indices.length);
+  }
+
   generate(grid, model_matrix, height_ratio = 1) {
+    this.clear();
+    
     const grid_size_x = grid[0].length;
     const grid_size_z = grid.length;
-
-    this.arrays.position = [];
-    this.arrays.normal = [];
-    this.arrays.texture_coord = [];
-    this.indices = [];
 
     let new_tile = null;
     for (let z = 0; z < grid_size_z; ++z) {
@@ -214,40 +218,60 @@ export class Maze_Walls extends Shape {
     });
   }
 
+  refresh(gl) {
+    this.copy_onto_graphics_card(
+      gl,
+      ["position", "normal", "texture_coord"],
+      true
+    );
+  }
 }
 
 export class Maze_Tiles extends Shape {
   constructor(grid, model_matrix, height_ratio = 1) {
     super("position", "normal", "texture_coord");
-    
-    const grid_size_x = grid[0].length;
-    const grid_size_z = grid.length;
 
     this.arrays.position = [];
     this.arrays.normal = [];
     this.arrays.texture_coord = [];
     this.indices = [];
 
+    this.generate(grid, model_matrix, height_ratio);
+  }
+
+  clear() {
+    this.arrays.position.splice(0, this.arrays.position.length);
+    this.arrays.normal.splice(0, this.arrays.normal.length);
+    this.arrays.texture_coord.splice(0, this.arrays.texture_coord.length);;
+    this.indices.splice(0, this.indices.length);
+  }
+
+  generate(grid, model_matrix, height_ratio = 1) {
+    this.clear();
+
+    const grid_size_x = grid[0].length;
+    const grid_size_z = grid.length;
+
     let new_tile = null;
     for (let z = 0; z < grid_size_z; ++z) {
       for (let x = 0; x < grid_size_x; ++x) {
         [
           {
-            pos: {x: 0, z: 0},
+            pos: { x: 0, z: 0 },
             axis: enum_axis.y,
             location: vec3(x, -0.5, z),
             side_length: 1,
             positive_normal: true, // looks to +y
           },
-        ].forEach(square => {
-          const {pos, ...props} = square;
+        ].forEach((square) => {
+          const { pos, ...props } = square;
 
-          if (grid[z][x] ) {
+          if (grid[z][x]) {
             new_tile = get_square_face({
               ...props,
               index_shift: this.arrays.position.length,
             });
-  
+
             this.arrays.position.push(...new_tile.position);
             this.arrays.normal.push(...new_tile.normal);
             this.indices.push(...new_tile.indices);
@@ -259,7 +283,9 @@ export class Maze_Tiles extends Shape {
 
     const norm_scalar = 1 / Math.max(grid_size_x, grid_size_z);
     const norm_matrix = Mat4.translation(0.5, 0.5, 0.5);
-    norm_matrix.pre_multiply(Mat4.scale(norm_scalar, height_ratio * norm_scalar, norm_scalar));
+    norm_matrix.pre_multiply(
+      Mat4.scale(norm_scalar, height_ratio * norm_scalar, norm_scalar)
+    );
     norm_matrix.pre_multiply(Mat4.translation(-0.5, 0, -0.5));
     norm_matrix.pre_multiply(model_matrix);
 
@@ -268,6 +294,13 @@ export class Maze_Tiles extends Shape {
     });
   }
 
+  refresh(gl) {
+    this.copy_onto_graphics_card(
+      gl,
+      ["position", "normal", "texture_coord"],
+      true
+    );
+  }
 }
 
 class Surface_Of_Revolution extends Grid_Patch {
@@ -312,10 +345,6 @@ export class Circle extends Regular_2D_Polygon {
   setScale(transform){
     this.xScale = transform[0][0];
     this.zScale = transform[2][2];
-  }
-
-  printData(){
-    console.log(this.indices)
   }
 
   isInside(x, z){

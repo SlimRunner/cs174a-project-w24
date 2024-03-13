@@ -806,9 +806,11 @@ const Vertex_Buffer = tiny.Vertex_Buffer =
             const gpu_instance = super.copy_onto_graphics_card(context, initial_gpu_representation);
 
             const gl = context;
+            let write = (target, data) => gl.bufferData(target, data, gl.STATIC_DRAW);
 
-            const write = did_exist ? (target, data) => gl.bufferSubData(target, 0, data)
-                : (target, data) => gl.bufferData(target, data, gl.STATIC_DRAW);
+            if (did_exist && this.prev_indices_buffer_size === this.indices.length) {
+                write = (target, data) => gl.bufferSubData(target, 0, data);
+            }
 
             for (let name of selection_of_arrays) {
                 if (!did_exist)
@@ -822,6 +824,8 @@ const Vertex_Buffer = tiny.Vertex_Buffer =
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpu_instance.index_buffer);
                 write(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(this.indices));
             }
+
+            this.prev_indices_buffer_size = this.indices.length;
             return gpu_instance;
         }
 
