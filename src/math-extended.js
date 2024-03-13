@@ -286,3 +286,7 @@ export function wobbly_circle(t, phase) {
   ) + 1;
   return [f_theta[0] * g_theta_0, f_theta[1] * g_theta_0];
 }
+
+export function vector_projection(v, onto) {
+  return onto.times(v.dot(onto) / onto.dot(onto));
+}
