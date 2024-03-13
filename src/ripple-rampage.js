@@ -501,6 +501,13 @@ export class Ripple_Rampage extends Scene {
       this.materials.matte.override(hex_color("#00FFFF"))
     );
     
+    this.shapes.maze_tiles.draw(
+      context,
+      program_state,
+      Mat4.identity(),
+      this.materials.grass_mat
+    );
+    
     GL.disable(GL.DEPTH_TEST);
     if (this.addRippleButton){
       this.addRipple(t, Mat4.translation(0, 0, 1));
@@ -514,54 +521,39 @@ export class Ripple_Rampage extends Scene {
       context,
       program_state,
       model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      //this.materials.ambient_phong
       this.materials.mountain
     );
-    // this.shapes.mountains[1].draw(
-    //   context,
-    //   program_state,
-    //   model_transform.times(Mat4.translation(-3,0,9)).times(Mat4.scale(6, 8, 6)),
-    //   this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
-    // );
-    // this.shapes.mountains[2].draw(
-    //   context,
-    //   program_state,
-    //   model_transform.times(Mat4.translation(3,0,8)).times(Mat4.scale(6, 8, 6)),
-    //   this.materials.matte.override(color(0.6, 0.4, 0.35, 1.0))
-    // );
 
-    //for (let i=50 ; i< 0; i-=10 ){
-      this.shapes.mountains[1].draw(
-        context,
-        program_state,
-       model_transform.times(Mat4.translation(120, 0, 50)).times(Mat4.scale(50, 50, 50)),
-        this.materials.mountain
-      );
-  //  }
-  this.shapes.mountains[1].draw(
-    context,
-    program_state,
-   model_transform.times(Mat4.translation(120, 0, 20)).times(Mat4.scale(20, 50, 20)),
-    this.materials.mountain
-  );
-  this.shapes.mountains[2].draw(
-    context,
-    program_state,
-   model_transform.times(Mat4.translation(120, 0, 0)).times(Mat4.scale(20, 50, 20)),
-    this.materials.mountain
-  );
-  this.shapes.mountains[2].draw(
-    context,
-    program_state,
-   model_transform.times(Mat4.translation(120, 0, -50)).times(Mat4.scale(50, 50, 50)),
-    this.materials.mountain
-  );
-  this.shapes.mountains[1].draw(
-    context,
-    program_state,
-   model_transform.times(Mat4.translation(120, 0, -70)).times(Mat4.scale(30, 50, 20)),
-    this.materials.mountain
-  );
+    this.shapes.mountains[1].draw(
+      context,
+      program_state,
+      model_transform.times(Mat4.translation(120, 0, 50)).times(Mat4.scale(50, 50, 50)),
+      this.materials.mountain
+    );
+    this.shapes.mountains[1].draw(
+      context,
+      program_state,
+    model_transform.times(Mat4.translation(120, 0, 20)).times(Mat4.scale(20, 50, 20)),
+      this.materials.mountain
+    );
+    this.shapes.mountains[2].draw(
+      context,
+      program_state,
+    model_transform.times(Mat4.translation(120, 0, 0)).times(Mat4.scale(20, 50, 20)),
+      this.materials.mountain
+    );
+    this.shapes.mountains[2].draw(
+      context,
+      program_state,
+    model_transform.times(Mat4.translation(120, 0, -50)).times(Mat4.scale(50, 50, 50)),
+      this.materials.mountain
+    );
+    this.shapes.mountains[1].draw(
+      context,
+      program_state,
+    model_transform.times(Mat4.translation(120, 0, -70)).times(Mat4.scale(30, 50, 20)),
+      this.materials.mountain
+    );
    
 
     this.shapes.cloud.draw(
@@ -576,25 +568,6 @@ export class Ripple_Rampage extends Scene {
       program_state,
       Mat4.identity(),
       this.materials.stone_mat
-    );
-    this.shapes.maze_tiles.draw(
-      context,
-      program_state,
-      Mat4.identity(),
-      this.materials.grass_mat
-    );
-    //new
-   /* this.shapes.maze_tiles.draw(
-      context,
-      program_state,
-      Mat4.identity().times(Mat4.scale(50, 1, 50)),
-      this.materials.grass_mat
-    );*/
-    this.shapes.maze_tiles.draw(
-      context,
-      program_state,
-      Mat4.identity().times(Mat4.translation(40,0,0)),
-      this.materials.grass_mat
     );
 
     if (this.addRainButton){
