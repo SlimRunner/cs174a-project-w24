@@ -9,6 +9,7 @@ import {
   Complex_Textured,
   Flat_Color_Shader,
   Cloud_Shader,
+  Mountain_Shader,
 } from "./custom-shaders.js";
 import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle, Text_Line } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
@@ -126,7 +127,7 @@ export class Ripple_Rampage extends Scene {
         specularity: 0.4,
         color: color(1, 1, 1, 1),
       }),
-      mountain: new Material(new Phong_Shader_2(),{
+      mountain: new Material(new Mountain_Shader(),{
         ambient: 0.2,
         diffusivity: 1,
         specularity: 0,
@@ -687,7 +688,8 @@ export class Ripple_Rampage extends Scene {
         program_state,
         transform,
         this.materials.mountain.override({
-          ...shared_overrides
+          ...shared_overrides,
+          snow_threshold: 750,
         })
       );
     });
@@ -705,7 +707,8 @@ export class Ripple_Rampage extends Scene {
         program_state,
         transform,
         this.materials.mountain.override({
-          ...shared_overrides
+          ...shared_overrides,
+          snow_threshold: 370,
         })
       );
     });
