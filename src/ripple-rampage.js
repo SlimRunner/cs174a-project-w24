@@ -48,6 +48,8 @@ export class Ripple_Rampage extends Scene {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
 
+    this.cam_loc = vec3(0, 0, 0);
+
     const maze_size = 60;
     this.maze_height_ratio = 1.25;
     this.maze = make_7x7_maze();
@@ -69,7 +71,7 @@ export class Ripple_Rampage extends Scene {
     this.transfomations = {
       click_at: Mat4.translation(-1000,-1000,-1000),
       maze: Mat4.scale(maze_size, maze_size, maze_size),
-      cloud: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 3, 0)),
+      cloud: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 5, 0)),
       well: Mat4.translation(0, 0.3, 0).times(Mat4.scale(1.25, 1, 1.25)),
       lake: Mat4.translation(0, 0.01, 0).times(Mat4.scale(1.2, 1, 1.2)),
     }
@@ -197,16 +199,15 @@ export class Ripple_Rampage extends Scene {
         //   object: this.shapes.identifier,
         //   model_transform: Mat4,
         //   capturable: boolean, // item follows you around when you click
-        //   interactive: boolean, // something happens when you click
         //   max_distance: number, // when distance is larger click is denied
+        //   success?: boolean, // true when clicked and in range
         // },
         {
           id: "cloud",
           object: this.shapes.cloud,
           model_transform: this.transfomations.cloud,
           capturable: true,
-          interactive: false,
-          max_distance: 15,
+          max_distance: 5,
         },
         {
           // this object is temporary
@@ -215,7 +216,6 @@ export class Ripple_Rampage extends Scene {
           object: this.shapes.maze_walls,
           model_transform: Mat4.identity(),
           capturable: false,
-          interactive: false,
           max_distance: Infinity,
         },
         {
@@ -225,7 +225,6 @@ export class Ripple_Rampage extends Scene {
           object: this.shapes.maze_tiles,
           model_transform: Mat4.identity(),
           capturable: false,
-          interactive: true,
           max_distance: Infinity,
         },
         {
@@ -235,7 +234,6 @@ export class Ripple_Rampage extends Scene {
           object: this.shapes.well,
           model_transform: this.transfomations.well,
           capturable: false,
-          interactive: false,
           max_distance: Infinity,
         },
         {
@@ -245,7 +243,6 @@ export class Ripple_Rampage extends Scene {
           object: this.shapes.water_surface,
           model_transform: this.transfomations.lake,
           capturable: false,
-          interactive: false,
           max_distance: Infinity,
         },
       ]
@@ -327,7 +324,12 @@ export class Ripple_Rampage extends Scene {
     //   callback
     // );
     this.make_key_insensitive("Make it rain", ["R"], () => {
-      if (this.resetGame) {
+      if (
+        this.resetGame ||
+        this.distance_to_cloud() > this.groups.clickables[0].max_distance + 0.5
+      ) {
+        // TODO: add a message to the user to get closer to the cloud
+        console.log("too far");
         return;
       }
       this.addRainButton = true
@@ -418,6 +420,14 @@ export class Ripple_Rampage extends Scene {
     }
   }
 
+  distance_to_cloud() {
+    return Math.hypot(
+      this.cam_loc[0] - this.transfomations.cloud[0][3],
+      this.cam_loc[1] - this.transfomations.cloud[1][3],
+      this.cam_loc[2] - this.transfomations.cloud[2][3],
+    );
+  }
+
   addRaindrop(){
     const scale = get_3x3_determinant(this.transfomations.cloud);
     const rand_radius = Math.sqrt(Math.random()) * scale;
@@ -459,8 +469,9 @@ export class Ripple_Rampage extends Scene {
   }) {
     this.click_sph_coords = get_spherical_coords(direction, true);
 
-    if (this.captured_object) {
+    if (this.captured_object?.success) {
       // let item go
+      this.captured_object.success = false;
       this.captured_object = null;
       return;
     }
@@ -483,9 +494,8 @@ export class Ripple_Rampage extends Scene {
         Infinity
       );
 
-      if (is_capturable && is_in_range) {
-        this.captured_object = this.groups.clickables[mesh_index];
-      }
+      this.groups.clickables[mesh_index].success = is_capturable && is_in_range;
+      this.captured_object = this.groups.clickables[mesh_index];
     }
   }
   
@@ -507,6 +517,20 @@ export class Ripple_Rampage extends Scene {
 
     // this makes clear what I am calling
     const GL = context.context;
+    
+    let model_transform = Mat4.identity();
+    
+    const CMT = program_state.camera_transform;
+    const cam_loc = CMT
+      .sub_block([0, 3], [3, 4])
+      .flat();
+    this.cam_loc = vec3(...cam_loc);
+    const cam_lead = Mat4.from([
+      [CMT[0][0], 0, CMT[0][2], CMT[0][3]    ],
+      [        0, 1,         0, CMT[1][3] + 1],
+      [CMT[2][0], 0, CMT[2][2], CMT[2][3]    ],
+      [        0, 0,         0,         1],
+    ]);
 
     if (!context.scratchpad.controls) {
       this.add_mouse_controls(context.canvas);
@@ -514,7 +538,8 @@ export class Ripple_Rampage extends Scene {
       this.children.push(
         (context.scratchpad.controls = new Walk_Movement({
           on_click: this.on_click,
-          get_fov: () => this.fov
+          get_fov: () => this.fov,
+          get_reset_state: () => this.resetGame,
         }))
       );
       this.click_sph_coords = get_spherical_coords(program_state.camera_transform, false);
@@ -524,7 +549,6 @@ export class Ripple_Rampage extends Scene {
     this.hour_of_day = (this.hour_of_day + this.time_speed * dt * 0.25) % 24;
 
     if (this.clicked_on_frame) {
-      this.clicked_on_frame = false;
       this.time_at_click = t;
     }
 
@@ -564,20 +588,7 @@ export class Ripple_Rampage extends Scene {
       1000
     );
 
-    let model_transform = Mat4.identity();
-    
-    const CMT = program_state.camera_transform;
-    const cam_loc = CMT
-      .sub_block([0, 3], [3, 4])
-      .flat();
-    const cam_lead = Mat4.from([
-      [CMT[0][0], 0, CMT[0][2], CMT[0][3]    ],
-      [        0, 1,         0, CMT[1][3] + 1],
-      [CMT[2][0], 0, CMT[2][2], CMT[2][3]    ],
-      [        0, 0,         0,         1],
-    ]);
     const flash_lead = cam_lead.times(vec4(0, 0, -1, 1));
-
     this.shapes.water_surface.setScale(this.lakeTransform);
     
     // The parameters of the Light are: position, color, size
@@ -591,13 +602,16 @@ export class Ripple_Rampage extends Scene {
     // Be careful of the order
 
     // TODO: prevent distortion when looking up or down
-    if (this.captured_object && this.captured_object.capturable) {
+    if (this.captured_object?.success && this.captured_object.capturable) {
       const new_transform = strip_rotation(cam_lead
-        .times(Mat4.translation(0, 0, -3))
+        .times(Mat4.translation(0, 3, -3))
         .map((x, i) => Vector.from(
           this.captured_object.model_transform[i]).mix(x, 0.1)
         ));
         this.captured_object.model_transform.forEach((x, i, a) => a[i] = new_transform[i]);
+    } else if (this.clicked_on_frame && this.captured_object.id === "cloud") {
+      // TODO: add a message to the user to get closer to the cloud
+      console.log("too far");
     }
 
     // the following box ignores the depth buffer
@@ -769,5 +783,7 @@ export class Ripple_Rampage extends Scene {
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position
     }
+
+    this.clicked_on_frame = false;
   }
 }

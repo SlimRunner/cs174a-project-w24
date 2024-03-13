@@ -40,7 +40,7 @@ export class Walk_Movement extends Scene {
 
     this.thrust = 0;
     this.speed = 0;
-    this.position = Float3.create(0, 0, 0);
+    this.position = Float3.create(-3, 0, 0);
     this.torque = 0;
     this.angular_speed = 0;
     this.direction = 0;
@@ -298,7 +298,7 @@ export class Walk_Movement extends Scene {
     look_around_matrix.post_multiply(Mat4.rotation(this.look_angle.v_angle, 1, 0, 0));
 
     const dir = this.consts.cardinal_dir;
-    const thrustforce = this.walk_force;
+    const thrustforce = this.get_reset_state() ? 0 : this.walk_force;
     this.thrust = 0;
     
     this.direction = this.mouse.from_center[0];
