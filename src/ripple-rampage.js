@@ -13,8 +13,8 @@ import {
 import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle, Text_Line } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour } from "./utilities.js";
-import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp, calculate_sun_position, get_3x3_determinant } from "./math-extended.js";
+import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour, range } from "./utilities.js";
+import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp, calculate_sun_position, get_3x3_determinant, wobbly_circle } from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
@@ -130,8 +130,8 @@ export class Ripple_Rampage extends Scene {
         ambient: 0.2,
         diffusivity: 1,
         specularity: 0,
-        color: hex_color("#3a1f04"),
-        ambient_color: hex_color("#ffffff"),
+        color: hex_color("#a06354"),
+        ambient_color: color(0, 0, 0, 1),
       }),
       
       cloud: new Material(new Cloud_Shader(), {
@@ -593,7 +593,7 @@ export class Ripple_Rampage extends Scene {
       Math.PI * this.fov / 180,
       context.width / context.height,
       0.1,
-      1000
+      2000
     );
 
     const flash_lead = cam_lead.times(vec4(0, 0, -1, 1));
@@ -669,46 +669,46 @@ export class Ripple_Rampage extends Scene {
     this.cleanRipples(t);
     GL.enable(GL.DEPTH_TEST);
     
-    this.shapes.mountains[0].draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(120, 10, 120)).times(Mat4.scale(50, 50, 50)),
-      this.materials.mountain.override({
-        ...shared_overrides
-      })
-    );
+    const mountain_range_small = [
+      1, 2, 1, 1, 2, 1, 2, 2, 1
+    ].map(x => this.shapes.mountains[x]);
 
-    this.shapes.mountains[1].draw(
-      context,
-      program_state,
-      model_transform.times(Mat4.translation(120, 0, 50)).times(Mat4.scale(50, 50, 50)),
-      this.materials.mountain
-    );
-    this.shapes.mountains[1].draw(
-      context,
-      program_state,
-    model_transform.times(Mat4.translation(120, 0, 20)).times(Mat4.scale(20, 50, 20)),
-      this.materials.mountain
-    );
-    this.shapes.mountains[2].draw(
-      context,
-      program_state,
-    model_transform.times(Mat4.translation(120, 0, 0)).times(Mat4.scale(20, 50, 20)),
-      this.materials.mountain
-    );
-    this.shapes.mountains[2].draw(
-      context,
-      program_state,
-    model_transform.times(Mat4.translation(120, 0, -50)).times(Mat4.scale(50, 50, 50)),
-      this.materials.mountain
-    );
-    this.shapes.mountains[1].draw(
-      context,
-      program_state,
-    model_transform.times(Mat4.translation(120, 0, -70)).times(Mat4.scale(30, 50, 20)),
-      this.materials.mountain
-    );
-   
+    mountain_range_small.forEach((mountain, i, arr) => {
+      const alpha = i / arr.length;
+      const radius = 800;
+      const size = 250;
+      const [x, z] = wobbly_circle(alpha, 0.2);
+      const transform = Mat4.translation(
+        radius * x, 0, radius * z
+      );
+      transform.post_multiply(Mat4.scale(size, 2*size, size));
+      mountain.draw(
+        context,
+        program_state,
+        transform,
+        this.materials.mountain.override({
+          ...shared_overrides
+        })
+      );
+    });
+
+    [-0.06, 0.16, 0.5].forEach((alpha) => {
+      const radius = 1400;
+      const size = 400;
+      const [x, z] = wobbly_circle(alpha, 0.2);
+      const transform = Mat4.translation(
+        radius * x, size * 0.1, radius * z
+      );
+      transform.post_multiply(Mat4.scale(size, size, size));
+      this.shapes.mountains[0].draw(
+        context,
+        program_state,
+        transform,
+        this.materials.mountain.override({
+          ...shared_overrides
+        })
+      );
+    });
 
     this.shapes.cloud.draw(
       context,
