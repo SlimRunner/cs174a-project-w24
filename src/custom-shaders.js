@@ -1156,3 +1156,110 @@ export class Cloud_Shader extends Shader {
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
+
+export class Mountain_Shader extends Phong_Shader_2 {
+  constructor(num_lights = 2) {
+    super(num_lights);
+  }
+
+  vertex_glsl_code() {
+    // ********* VERTEX SHADER *********
+    return `
+      ${this.shared_glsl_code()}
+      attribute vec3 position, normal;
+      // Position is expressed in object coordinates.
+
+      uniform mat4 model_transform;
+      uniform mat4 projection_camera_model_transform;
+
+      void main() {
+        // The vertex's final resting place (in NDCS):
+        gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
+        // The final normal vector in screen space.
+        N = normalize( mat3( model_transform ) * normal / squared_scale);
+        vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
+      } 
+    `;
+  }
+
+  fragment_glsl_code() {
+    // ********* FRAGMENT SHADER *********
+    // A fragment is a pixel that's overlapped by the current triangle.
+    // Fragments affect the final image or get discarded due to depth.
+    return `
+      ${this.shared_glsl_code()}
+
+      // https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
+      // Classic Perlin 2D Noise 
+      // by Stefan Gustavson
+      //
+      vec2 fade(vec2 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
+      vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
+
+      float cnoise(vec2 P){
+        vec4 Pi = floor(P.xyxy) + vec4(0.0, 0.0, 1.0, 1.0);
+        vec4 Pf = fract(P.xyxy) - vec4(0.0, 0.0, 1.0, 1.0);
+        Pi = mod(Pi, 289.0); // To avoid truncation effects in permutation
+        vec4 ix = Pi.xzxz;
+        vec4 iy = Pi.yyww;
+        vec4 fx = Pf.xzxz;
+        vec4 fy = Pf.yyww;
+        vec4 i = permute(permute(ix) + iy);
+        vec4 gx = 2.0 * fract(i * 0.0243902439) - 1.0; // 1/41 = 0.024...
+        vec4 gy = abs(gx) - 0.5;
+        vec4 tx = floor(gx + 0.5);
+        gx = gx - tx;
+        vec2 g00 = vec2(gx.x,gy.x);
+        vec2 g10 = vec2(gx.y,gy.y);
+        vec2 g01 = vec2(gx.z,gy.z);
+        vec2 g11 = vec2(gx.w,gy.w);
+        vec4 norm = 1.79284291400159 - 0.85373472095314 * 
+          vec4(dot(g00, g00), dot(g01, g01), dot(g10, g10), dot(g11, g11));
+        g00 *= norm.x;
+        g01 *= norm.y;
+        g10 *= norm.z;
+        g11 *= norm.w;
+        float n00 = dot(g00, vec2(fx.x, fy.x));
+        float n10 = dot(g10, vec2(fx.y, fy.y));
+        float n01 = dot(g01, vec2(fx.z, fy.z));
+        float n11 = dot(g11, vec2(fx.w, fy.w));
+        vec2 fade_xy = fade(Pf.xy);
+        vec2 n_x = mix(vec2(n00, n01), vec2(n10, n11), fade_xy.x);
+        float n_xy = mix(n_x.x, n_x.y, fade_xy.y);
+        return 2.3 * n_xy;
+      }
+
+      uniform float snow_threshold;
+
+      void main() {
+        float distance = distance(vertex_worldspace, camera_center);
+        float sigmoid = 1.0 - 1.0 / (1.0 + exp(-0.001 * (distance - 1000.0)));
+        float noise = 0.5 * sin(0.1 * vertex_worldspace.x + 0.1 * vertex_worldspace.z);
+        float perlin = cnoise(vertex_worldspace.xz * 0.06);
+        float height_point = vertex_worldspace.y + 20.0 * perlin;
+        float snow_factor = ambient;
+        if (height_point > snow_threshold) {
+          snow_factor = 1.0;
+        }
+        // Compute an initial (ambient) color:
+        gl_FragColor = vec4( shape_ambient_color.xyz * pow(snow_factor, sigmoid), shape_color.w );
+        // Compute the final color with contributions from lights:
+        gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+      }
+    `;
+  }
+
+  send_material_extra(gl, gpu, material) {
+    gl.uniform1f(gpu.snow_threshold, material.snow_threshold);
+  }
+
+  update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+    super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
+    const defaults = {
+      snow_threshold: 750,
+    };
+    material = Object.assign({}, defaults, material);
+
+    this.send_material_extra(context, gpu_addresses, material);
+  }
+}
