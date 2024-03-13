@@ -51,7 +51,7 @@ export class Walk_Movement extends Scene {
     this.walk_force = 22.0;
     this.momentum_vector = vec3(0, 0, 0);
 
-    this.speed_limit = 15;
+    this.speed_limit = 8;
     this.speed_decay_factor = 0.8;
 
     this.gravity = -40;
@@ -372,8 +372,22 @@ export class Walk_Movement extends Scene {
 
     const new_position = this.position.plus(this.momentum_vector.times(this.speed * dt));
     new_position[1] = this.height;
-    const next_tile = this.compute_tile(new_position);
-    if (this_tile.state === next_tile.state) {
+
+    let collision_detected = false;
+    let r = 0.5;
+    let subdivisions = 16;
+    let next_tile = this_tile;
+    for(let i = 0; i<subdivisions; i++){
+      let vertex = this.position.plus(vec3(r*Math.cos(i*2*Math.PI/subdivisions), 0, r*Math.sin(i*2*Math.PI/subdivisions)));
+      next_tile = this.compute_tile(vertex);
+      if (this_tile.state != next_tile.state){
+        collision_detected = true;
+        console.log('detected');
+        break;
+      }
+    }
+    
+    if (!collision_detected) {
       this.position.forEach((_, i, arr) => arr[i] = new_position[i]);
     } else {
       const collision_normal = vec3(this_tile.x - next_tile.x, 0, this_tile.z - next_tile.z);
@@ -383,7 +397,7 @@ export class Walk_Movement extends Scene {
       // use vector projection to find the component of the momentum vector that is parallel to the collision normal
       this.position_delta = vector_projection(
         this.position_delta, collision_tangent
-      ).plus(collision_normal.times(0.1));
+      ).plus(collision_normal.times(0.01));
       this.momentum_vector.subtract_by(collision_normal.times(2 * this.momentum_vector.dot(collision_normal)));
       this.position.add_by(this.position_delta);
     }
