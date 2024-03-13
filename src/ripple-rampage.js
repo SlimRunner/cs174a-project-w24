@@ -156,15 +156,15 @@ export class Ripple_Rampage extends Scene {
       grass_mat: new Material(new Complex_Textured(), {
         ambient_color: color(0, 0, 0, 1),
         ambient: 0.1,
-        diffusivity: 4,
-        specularity: 1,
+        diffusivity: 3,
+        specularity: 0.8,
         bumpiness: 0.5,
         texture: new Texture(
           "textures/tiled-grass-texture.jpg",
           "LINEAR_MIPMAP_LINEAR"
         ),
         spec_map: new Texture(
-          "textures/tiled-grass-texture.jpg",
+          "textures/tiled-grass-spec.jpg",
           "LINEAR_MIPMAP_LINEAR"
         ),
         bump_map: new Texture(
@@ -176,19 +176,17 @@ export class Ripple_Rampage extends Scene {
         color: color(0, 0, 0, 1),
         ambient: 0.4,
         diffusivity: 4,
-        specularity: 3,
+        specularity: 2,
+        bumpiness: 1,
         texture: new Texture(
-          // "textures/tiled-grass-texture.jpg",
           "textures/color_map.jpg",
           "LINEAR_MIPMAP_LINEAR"
         ),
         spec_map: new Texture(
-          // "textures/tiled-grass-texture.jpg",
           "textures/spec_map.jpg",
           "LINEAR_MIPMAP_LINEAR"
         ),
         bump_map: new Texture(
-          // "textures/tiled-grass-bump.png",
           "textures/normal_map.jpg",
           "LINEAR_MIPMAP_LINEAR"
         ),
@@ -638,7 +636,7 @@ export class Ripple_Rampage extends Scene {
 
     const shared_overrides = {
       ambient_color: this.ambient_color,
-      ambient: 0.1 + 0.3 * Math.pow(2 * sun_zenith / Math.PI, 2)
+      ambient: 0.3 + 0.1 * Math.pow(2 * sun_zenith / Math.PI, 2)
     };
     
     // =========================================================

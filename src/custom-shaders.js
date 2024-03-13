@@ -795,7 +795,7 @@ export class Complex_Textured extends Shader {
   shared_glsl_code() {
     // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
     return `
-      precision mediump float;
+      precision highp float;
       const int N_LIGHTS = ${this.num_lights};
       uniform float ambient, diffusivity, specularity, smoothness, bumpiness;
       uniform vec4 light_positions_or_vectors[N_LIGHTS], light_colors[N_LIGHTS];
@@ -852,6 +852,8 @@ export class Complex_Textured extends Shader {
       attribute vec3 position, normal;                            
       // Position is expressed in object coordinates.
       attribute vec2 texture_coord;
+      attribute vec3 tangent;
+      attribute vec3 bitangent;
       
       uniform mat4 model_transform;
       uniform mat4 projection_camera_model_transform;
@@ -879,6 +881,34 @@ export class Complex_Textured extends Shader {
       uniform sampler2D bump_map;
       uniform sampler2D spec_map;
 
+      vec3 approximateTangent(vec3 N, vec3 V) {
+        return normalize(cross(N, V));
+      }
+      
+      vec3 approximateBitangent(vec3 N, vec3 T) {
+        return normalize(cross(T, N));
+      }
+
+      vec3 perturbNormal(vec3 N, vec3 V, vec4 normalMap) {
+        // Get the tangent and bitangent vectors
+        vec3 T = normalize(approximateTangent(N, V));
+        vec3 B = normalize(approximateBitangent(N, T));
+        
+        // Calculate the tangent space matrix
+        mat3 TBN = mat3(T, B, N);
+    
+        // Transform the normal map values from [0,1] to [-1,1] range
+        vec3 mapNormal = normalMap.xyz * 2.0 - 1.0;
+    
+        // Transform the normal map from tangent space to world space
+        vec3 worldNormal = normalize(TBN * mapNormal);
+    
+        // Perturb the original normal using the world space normal
+        vec3 perturbedNormal = normalize(N + worldNormal);
+    
+        return perturbedNormal;
+      }
+
       void main(){
         // Sample the texture image in the correct place:
         vec4 tex_color = texture2D( texture, f_tex_coord );
@@ -889,7 +919,8 @@ export class Complex_Textured extends Shader {
         // convert spec_color to grayscale
         float spec_intensity = dot(spec_color.rgb, vec3(0.299, 0.587, 0.114));
         // use bump_color and N (which is the normal) to compute a bump map
-        vec3 N_bumped = normalize( N + (bump_color.rbg - 0.5) * bumpiness );
+        vec3 V = normalize( camera_center - vertex_worldspace );
+        vec3 N_bumped = mix(N, perturbNormal(N, V, bump_color), bumpiness);
 
         // Compute an initial (ambient) color:
         gl_FragColor = vec4( (ambient_color * tex_color).xyz * ambient, ambient_color.w * tex_color.w ); 
