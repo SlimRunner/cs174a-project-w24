@@ -593,7 +593,7 @@ export class Ripple_Rampage extends Scene {
       Math.PI * this.fov / 180,
       context.width / context.height,
       0.1,
-      2000
+      2400
     );
 
     const flash_lead = cam_lead.times(vec4(0, 0, -1, 1));
@@ -675,11 +675,11 @@ export class Ripple_Rampage extends Scene {
 
     mountain_range_small.forEach((mountain, i, arr) => {
       const alpha = i / arr.length;
-      const radius = 800;
-      const size = 250;
+      const radius = 1800;
+      const size = 500;
       const [x, z] = wobbly_circle(alpha, 0.2);
       const transform = Mat4.translation(
-        radius * x, 0, radius * z
+        radius * x, size * 0.1, radius * z
       );
       transform.post_multiply(Mat4.scale(size, 2*size, size));
       mountain.draw(
@@ -693,11 +693,11 @@ export class Ripple_Rampage extends Scene {
     });
 
     [-0.06, 0.16, 0.5].forEach((alpha) => {
-      const radius = 1400;
-      const size = 400;
+      const radius = 800;
+      const size = 275;
       const [x, z] = wobbly_circle(alpha, 0.2);
       const transform = Mat4.translation(
-        radius * x, size * 0.1, radius * z
+        radius * x, size * 0.2, radius * z
       );
       transform.post_multiply(Mat4.scale(size, size, size));
       this.shapes.mountains[0].draw(
