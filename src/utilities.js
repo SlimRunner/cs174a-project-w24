@@ -240,6 +240,21 @@ export function pretty_print_grid(grid) {
   console.log(msg);
 }
 
+export function pretty_print_grid_at(grid, px, py) {
+  let msg = "";
+  let y = 0;
+  for (const row of grid) {
+    let x = 0;
+    for (const cell of row) {
+      msg += cell ? (x === px && y === py ? "░░" : "  ") : "██";
+      ++x;
+    }
+    ++y;
+    msg += "\n";
+  }
+  console.log(msg);
+}
+
 export function get_square_face({
   axis = enum_axis.x,
   positive_normal = true,
@@ -248,7 +263,7 @@ export function get_square_face({
   side_length = 0,
   location = vec3(0, 0, 0),
 } = {}) {
-  side_length = 0.5 * side_length;
+  side_length = 0.5001 * side_length;
   const X = [  along_disp, side_length, side_length][axis];
   const Y = [side_length,   along_disp, side_length][axis];
   const Z = [side_length, side_length,   along_disp][axis];

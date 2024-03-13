@@ -38,10 +38,13 @@ const {
 
 const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version();
 
-function make_7x7_maze() {
-  const maze = make_maze(7, 7, 3);
-  pretty_print_grid(maze);
-  return maze;
+function make_7x7_maze(props) {
+  props.grid = make_maze(
+    props.tiles.x,
+    props.tiles.z,
+    props.cutout
+  );
+  pretty_print_grid(props.grid);
 }
 
 export class Ripple_Rampage extends Scene {
@@ -51,9 +54,18 @@ export class Ripple_Rampage extends Scene {
 
     this.cam_loc = vec3(0, 0, 0);
 
-    const maze_size = 60;
+    this.maze_props = {
+      grid: null,
+      length: 60,
+      tiles: {
+        x: 7,
+        z: 7,
+      },
+      cutout: 3
+    };
+    const maze_size = this.maze_props.length;
     this.maze_height_ratio = 1.25;
-    this.maze = make_7x7_maze();
+    make_7x7_maze(this.maze_props);
 
     // initialized in display, do not use prior
     this.sun_color = null;
@@ -75,15 +87,15 @@ export class Ripple_Rampage extends Scene {
       cloud: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 5, 0)),
       well: Mat4.translation(0, 0.3, 0).times(Mat4.scale(1.25, 1, 1.25)),
       lake: Mat4.translation(0, 0.01, 0).times(Mat4.scale(1.2, 1, 1.2)),
-    }
+    };
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
     this.shapes = {
       light_src: new defs.Subdivision_Sphere(2),
       cube: new defs.Cube(),
       sphere: new Flat_Sphere(3),
-      maze_walls: new Maze_Walls(this.maze, this.transfomations.maze, this.maze_height_ratio),
-      maze_tiles: new Maze_Tiles(this.maze, this.transfomations.maze),
+      maze_walls: new Maze_Walls(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio),
+      maze_tiles: new Maze_Tiles(this.maze_props.grid, this.transfomations.maze),
       water_surface: new Lake_Mesh(),
       raindrop: new defs.Subdivision_Sphere(4),
       skybox: new defs.Cube(),
@@ -547,6 +559,7 @@ export class Ripple_Rampage extends Scene {
           on_click: this.on_click,
           get_fov: () => this.fov,
           get_reset_state: () => this.resetGame,
+          maze_props: () => this.maze_props,
         }))
       );
       this.click_sph_coords = get_spherical_coords(program_state.camera_transform, false);
@@ -803,11 +816,11 @@ export class Ripple_Rampage extends Scene {
       );
     }
     else{
-      this.maze = make_7x7_maze();
+      make_7x7_maze(this.maze_props);
       console.log("resetting maze");
-      this.shapes.maze_walls.generate(this.maze, this.transfomations.maze, this.maze_height_ratio);
+      this.shapes.maze_walls.generate(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio);
       this.shapes.maze_walls.refresh(GL);
-      this.shapes.maze_tiles.generate(this.maze, this.transfomations.maze, this.maze_height_ratio);
+      this.shapes.maze_tiles.generate(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio);
       this.shapes.maze_tiles.refresh(GL);
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position

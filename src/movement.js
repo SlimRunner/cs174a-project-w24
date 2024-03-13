@@ -1,5 +1,6 @@
 import { defs, tiny } from "../examples/common.js";
-import { Float3, custom_look_at, min_abs, lerp, get_spherical_coords } from "./math-extended.js";
+import { Float3, custom_look_at, min_abs, lerp, get_spherical_coords, vector_projection } from "./math-extended.js";
+import { pretty_print_grid_at } from "./utilities.js";
 
 const {
   Vector,
@@ -282,8 +283,33 @@ export class Walk_Movement extends Scene {
     this.new_line();
   }
 
+  compute_tile(pos) {
+    // conversion of coordinates to index
+    // visual guide https://www.desmos.com/calculator/qnykrwrxuf
+    let {length, tiles, grid} = this.maze_props();
+    let [x, _, z] = pos;
+    x = Math.floor((2 * tiles.x + 1) * (x / length + 0.5));
+    z = Math.floor((2 * tiles.z + 1) * (z / length + 0.5));
+    let grid_state = 0;
+    if (grid?.length && grid[0]?.length) {
+      grid_state = grid[z][x];
+    }
+    return {
+      state: x === tiles.x && z === tiles.z ? 0 : grid_state,
+      x, z
+    };
+  }
+
   walk(state, dt) {
     let look_around_matrix = Mat4.identity();
+    
+    const this_tile = this.compute_tile(this.position);
+    if (this.temp_tile && (this_tile.x !== this.temp_tile.x || this_tile.z !== this.temp_tile.z)) {
+      // pretty_print_grid_at(this.maze_props().grid, this_tile.x, this_tile.z);
+    }
+    this.temp_tile = {...this_tile};
+    // console.log(`${this_tile.x}, ${this_tile.z}: ${this_tile.state}`);
+    // console.assert(this_tile.state === 1);
 
     let look_towards = vec(0, 0);
     if (this.mouse.enabled) {
@@ -346,11 +372,28 @@ export class Walk_Movement extends Scene {
       this.speed *= this.speed_decay_factor;
     }
 
-    this.position.add_by(this.momentum_vector.times(this.speed * dt));
-    this.position[1] = this.height;
+    const new_position = this.position.plus(this.momentum_vector.times(this.speed * dt));
+    new_position[1] = this.height;
+    const next_tile = this.compute_tile(new_position);
+    if (this_tile.state === next_tile.state) {
+      this.position.forEach((_, i, arr) => arr[i] = new_position[i]);
+    } else {
+      const collision_normal = vec3(this_tile.x - next_tile.x, 0, this_tile.z - next_tile.z);
+      collision_normal.normalize();
+      const collision_tangent = vec3(-collision_normal[2], 0, collision_normal[0]);
+      this.position_delta = this.momentum_vector.times(this.speed * dt);
+      // use vector projection to find the component of the momentum vector that is parallel to the collision normal
+      this.position_delta = vector_projection(
+        this.position_delta, collision_tangent
+      ).plus(collision_normal.times(0.1));
+      this.momentum_vector.subtract_by(collision_normal.times(2 * this.momentum_vector.dot(collision_normal)));
+      this.position.add_by(this.position_delta);
+    }
+    this.position[1] = new_position[1];
 
     const final_look_at_matrix = look_around_matrix.times(custom_look_at(this.position, heading, this.up_axis));
     state.set_camera(final_look_at_matrix);
+    this.prev_tile = {...this_tile};
   }
 
   display(
