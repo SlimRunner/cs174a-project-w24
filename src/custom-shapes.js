@@ -103,14 +103,27 @@ export class Lake_Mesh extends Shape {
 export class Maze_Walls extends Shape {
   constructor(grid, model_matrix, height_ratio = 1) {
     super("position", "normal", "texture_coord");
-    
-    const grid_size_x = grid[0].length;
-    const grid_size_z = grid.length;
 
     this.arrays.position = [];
     this.arrays.normal = [];
     this.arrays.texture_coord = [];
     this.indices = [];
+
+    this.generate(grid, model_matrix, height_ratio);
+  }
+
+  clear() {
+    this.arrays.position.splice(0, this.arrays.position.length);
+    this.arrays.normal.splice(0, this.arrays.normal.length);
+    this.arrays.texture_coord.splice(0, this.arrays.texture_coord.length);;
+    this.indices.splice(0, this.indices.length);
+  }
+
+  generate(grid, model_matrix, height_ratio = 1) {
+    this.clear();
+    
+    const grid_size_x = grid[0].length;
+    const grid_size_z = grid.length;
 
     let new_tile = null;
     for (let z = 0; z < grid_size_z; ++z) {
@@ -205,40 +218,60 @@ export class Maze_Walls extends Shape {
     });
   }
 
+  refresh(gl) {
+    this.copy_onto_graphics_card(
+      gl,
+      ["position", "normal", "texture_coord"],
+      true
+    );
+  }
 }
 
 export class Maze_Tiles extends Shape {
   constructor(grid, model_matrix, height_ratio = 1) {
     super("position", "normal", "texture_coord");
-    
-    const grid_size_x = grid[0].length;
-    const grid_size_z = grid.length;
 
     this.arrays.position = [];
     this.arrays.normal = [];
     this.arrays.texture_coord = [];
     this.indices = [];
 
+    this.generate(grid, model_matrix, height_ratio);
+  }
+
+  clear() {
+    this.arrays.position.splice(0, this.arrays.position.length);
+    this.arrays.normal.splice(0, this.arrays.normal.length);
+    this.arrays.texture_coord.splice(0, this.arrays.texture_coord.length);;
+    this.indices.splice(0, this.indices.length);
+  }
+
+  generate(grid, model_matrix, height_ratio = 1) {
+    this.clear();
+
+    const grid_size_x = grid[0].length;
+    const grid_size_z = grid.length;
+
     let new_tile = null;
     for (let z = 0; z < grid_size_z; ++z) {
       for (let x = 0; x < grid_size_x; ++x) {
         [
           {
-            pos: {x: 0, z: 0},
+            pos: { x: 0, z: 0 },
             axis: enum_axis.y,
             location: vec3(x, -0.5, z),
             side_length: 1,
             positive_normal: true, // looks to +y
           },
-        ].forEach(square => {
-          const {pos, ...props} = square;
+        ].forEach((square) => {
+          const { pos, ...props } = square;
 
-          if (grid[z][x] ) {
+          if (grid[z][x]) {
             new_tile = get_square_face({
               ...props,
               index_shift: this.arrays.position.length,
             });
-  
+
             this.arrays.position.push(...new_tile.position);
             this.arrays.normal.push(...new_tile.normal);
             this.indices.push(...new_tile.indices);
@@ -250,7 +283,9 @@ export class Maze_Tiles extends Shape {
 
     const norm_scalar = 1 / Math.max(grid_size_x, grid_size_z);
     const norm_matrix = Mat4.translation(0.5, 0.5, 0.5);
-    norm_matrix.pre_multiply(Mat4.scale(norm_scalar, height_ratio * norm_scalar, norm_scalar));
+    norm_matrix.pre_multiply(
+      Mat4.scale(norm_scalar, height_ratio * norm_scalar, norm_scalar)
+    );
     norm_matrix.pre_multiply(Mat4.translation(-0.5, 0, -0.5));
     norm_matrix.pre_multiply(model_matrix);
 
@@ -259,6 +294,13 @@ export class Maze_Tiles extends Shape {
     });
   }
 
+  refresh(gl) {
+    this.copy_onto_graphics_card(
+      gl,
+      ["position", "normal", "texture_coord"],
+      true
+    );
+  }
 }
 
 class Surface_Of_Revolution extends Grid_Patch {
@@ -305,10 +347,6 @@ export class Circle extends Regular_2D_Polygon {
     this.zScale = transform[2][2];
   }
 
-  printData(){
-    console.log(this.indices)
-  }
-
   isInside(x, z){
     let counter = 0;
     for (let i = 1; i < this.arrays.position.length-1; i++) {
@@ -324,44 +362,60 @@ export class Circle extends Regular_2D_Polygon {
   }
 }
 
-export class Text_Line extends Shape {                           // **Text_Line** embeds text in the 3D world, using a crude texture
-                                                                 // method.  This Shape is made of a horizontal arrangement of quads.
-                                                                 // Each is textured over with images of ASCII characters, spelling
-                                                                 // out a string.  Usage:  Instantiate the Shape with the desired
-                                                                 // character line width.  Then assign it a single-line string by calling
-                                                                 // set_string("your string") on it. Draw the shape on a material
-                                                                 // with full ambient weight, and text.png assigned as its texture
-                                                                 // file.  For multi-line strings, repeat this process and draw with
-                                                                 // a different matrix.
-    constructor(max_size) {
-        super("position", "normal", "texture_coord");
-        this.max_size = max_size;
-        var object_transform = Mat4.identity();
-        for (var i = 0; i < max_size; i++) {                                       // Each quad is a separate Square instance:
-            defs.Square.insert_transformed_copy_into(this, [], object_transform);
-            object_transform.post_multiply(Mat4.translation(1.5, 0, 0));
-        }
+export class Text_Line extends Shape {
+  // **Text_Line** embeds text in the 3D world, using a crude texture
+  // method.  This Shape is made of a horizontal arrangement of quads.
+  // Each is textured over with images of ASCII characters, spelling
+  // out a string.  Usage:  Instantiate the Shape with the desired
+  // character line width.  Then assign it a single-line string by calling
+  // set_string("your string") on it. Draw the shape on a material
+  // with full ambient weight, and text.png assigned as its texture
+  // file.  For multi-line strings, repeat this process and draw with
+  // a different matrix.
+  constructor(max_size) {
+    super("position", "normal", "texture_coord");
+    this.max_size = max_size;
+    var object_transform = Mat4.identity();
+    for (var i = 0; i < max_size; i++) {
+      // Each quad is a separate Square instance:
+      defs.Square.insert_transformed_copy_into(this, [], object_transform);
+      object_transform.post_multiply(Mat4.translation(1.5, 0, 0));
     }
+  }
 
-    set_string(line, context) {           // set_string():  Call this to overwrite the texture coordinates buffer with new
-        // values per quad, which enclose each of the string's characters.
-        this.arrays.texture_coord = [];
-        for (var i = 0; i < this.max_size; i++) {
-            var row = Math.floor((i < line.length ? line.charCodeAt(i) : ' '.charCodeAt()) / 16),
-                col = Math.floor((i < line.length ? line.charCodeAt(i) : ' '.charCodeAt()) % 16);
+  set_string(line, context) {
+    // set_string():  Call this to overwrite the texture coordinates buffer with new
+    // values per quad, which enclose each of the string's characters.
+    this.arrays.texture_coord = [];
+    for (var i = 0; i < this.max_size; i++) {
+      var row = Math.floor(
+          (i < line.length ? line.charCodeAt(i) : " ".charCodeAt()) / 16
+        ),
+        col = Math.floor(
+          (i < line.length ? line.charCodeAt(i) : " ".charCodeAt()) % 16
+        );
 
-            var skip = 3, size = 32, sizefloor = size - skip;
-            var dim = size * 16,
-                left = (col * size + skip) / dim, top = (row * size + skip) / dim,
-                right = (col * size + sizefloor) / dim, bottom = (row * size + sizefloor + 5) / dim;
+      var skip = 3,
+        size = 32,
+        sizefloor = size - skip;
+      var dim = size * 16,
+        left = (col * size + skip) / dim,
+        top = (row * size + skip) / dim,
+        right = (col * size + sizefloor) / dim,
+        bottom = (row * size + sizefloor + 5) / dim;
 
-            this.arrays.texture_coord.push(...Vector.cast([left, 1 - bottom], [right, 1 - bottom],
-                [left, 1 - top], [right, 1 - top]));
-        }
-        if (!this.existing) {
-            this.copy_onto_graphics_card(context);
-            this.existing = true;
-        } else
-            this.copy_onto_graphics_card(context, ["texture_coord"], false);
+      this.arrays.texture_coord.push(
+        ...Vector.cast(
+          [left, 1 - bottom],
+          [right, 1 - bottom],
+          [left, 1 - top],
+          [right, 1 - top]
+        )
+      );
     }
+    if (!this.existing) {
+      this.copy_onto_graphics_card(context);
+      this.existing = true;
+    } else this.copy_onto_graphics_card(context, ["texture_coord"], false);
+  }
 }
