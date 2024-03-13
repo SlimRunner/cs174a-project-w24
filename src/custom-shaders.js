@@ -5,7 +5,7 @@ import {
   get_fragment_skybox_model,
 } from "./hosek-wilkie-shader-strings.js";
 
-const { vec4, color, Shader, Matrix } = tiny;
+const { vec4, color, Shader, Matrix, Vector } = tiny;
 
 export class Flat_Color_Shader extends Shader {
   // **Flat_Color** is a simple "procedural" texture shader, with
@@ -102,10 +102,10 @@ export class Gouraud_Shader extends Shader {
         vec3 E = normalize( camera_center - vertex_worldspace );
         vec3 result = vec3( 0.0 );
         for(int i = 0; i < N_LIGHTS; i++){
-          // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
-          // light will appear directional (uniform direction from all points), and we 
+          // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+          // light will appear directional (uniform direction from all points), and we
           // simply obtain a vector towards the light by directly using the stored value.
-          // Otherwise if w is 1 it will appear as a point light -- compute the vector to 
+          // Otherwise if w is 1 it will appear as a point light -- compute the vector to
           // the point light's location from the current surface point.  In either case, 
           // fade (attenuate) the light as the vector needed to reach it gets longer.  
           vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
@@ -136,7 +136,7 @@ export class Gouraud_Shader extends Shader {
       // Position is expressed in object coordinates.
       
       uniform mat4 model_transform;
-      uniform mat4 projection_camera_model_transform;
+      uniform mat4 projection_matrix;
 
       void main(){                     
         vec3 N, vertex_worldspace;                                              
@@ -282,10 +282,10 @@ export class Phong_Shader_2 extends Shader {
         vec3 E = normalize( camera_center - vertex_worldspace );
         vec3 result = vec3( 0.0 );
         for(int i = 0; i < N_LIGHTS; i++){
-          // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
-          // light will appear directional (uniform direction from all points), and we 
+          // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+          // light will appear directional (uniform direction from all points), and we
           // simply obtain a vector towards the light by directly using the stored value.
-          // Otherwise if w is 1 it will appear as a point light -- compute the vector to 
+          // Otherwise if w is 1 it will appear as a point light -- compute the vector to
           // the point light's location from the current surface point.  In either case, 
           // fade (attenuate) the light as the vector needed to reach it gets longer.  
           vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
@@ -313,13 +313,13 @@ export class Phong_Shader_2 extends Shader {
     // ********* VERTEX SHADER *********
     return `
       ${this.shared_glsl_code()}
-      attribute vec3 position, normal;                            
+      attribute vec3 position, normal;
       // Position is expressed in object coordinates.
-      
+
       uniform mat4 model_transform;
       uniform mat4 projection_camera_model_transform;
 
-      void main(){                                                                   
+      void main() {
         // The vertex's final resting place (in NDCS):
         gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
         // The final normal vector in screen space.
@@ -335,7 +335,8 @@ export class Phong_Shader_2 extends Shader {
     // Fragments affect the final image or get discarded due to depth.
     return `
       ${this.shared_glsl_code()}
-      void main(){                                                           
+
+      void main() {
         // Compute an initial (ambient) color:
         gl_FragColor = vec4( shape_ambient_color.xyz * ambient, shape_color.w );
         // Compute the final color with contributions from lights:
@@ -551,7 +552,10 @@ export class Hosek_Wilkie_Skybox extends Shader {
   }
 
   send_material(gl, gpu, material) {
-    // here I can pass turbidity and other props and maybe time
+    gl.uniform2fv(
+      gpu.sun_dir,
+      Vector.from([material.sun_zenith, material.sun_azimuth])
+    );
   }
 
   send_gpu_state(gl, gpu, gpu_state, model_transform) {
@@ -574,12 +578,12 @@ export class Hosek_Wilkie_Skybox extends Shader {
 
   update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
     const defaults = {
-      color: color(0, 0, 0, 1),
+      sun_azimuth: 0,
+      sun_zenith: 0
     };
     material = Object.assign({}, defaults, material);
-    context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
 
-    // this.send_material(context, gpu_addresses, material);
+    this.send_material(context, gpu_addresses, material);
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);
   }
 }
@@ -744,12 +748,13 @@ export class Ripple_Shader extends Shader {
           }
           else
           {
-            intensity.w = intensity.w / 1.4;
+            intensity.w = intensity.w / 3.0;
           }
           if (relativeTime > 1.0)
           {
             intensity.w = intensity.w / relativeTime;
           }
+          intensity.w = intensity.w * 0.5;
           gl_FragColor = intensity;
         }`;
     }
@@ -784,7 +789,6 @@ export class Complex_Textured extends Shader {
 
   constructor(num_lights = 2) {
     super();
-    console.log(this.num_lights);
     this.num_lights = num_lights;
   }
 
@@ -793,10 +797,10 @@ export class Complex_Textured extends Shader {
     return `
       precision mediump float;
       const int N_LIGHTS = ${this.num_lights};
-      uniform float ambient, diffusivity, specularity, smoothness;
+      uniform float ambient, diffusivity, specularity, smoothness, bumpiness;
       uniform vec4 light_positions_or_vectors[N_LIGHTS], light_colors[N_LIGHTS];
       uniform float light_attenuation_factors[N_LIGHTS];
-      uniform vec4 shape_color;
+      uniform vec4 ambient_color;
       uniform vec3 squared_scale, camera_center;
 
       // Specifier "varying" means a variable's final value will be passed from the vertex shader
@@ -811,10 +815,10 @@ export class Complex_Textured extends Shader {
         vec3 E = normalize( camera_center - vertex_worldspace );
         vec3 result = vec3( 0.0 );
         for(int i = 0; i < N_LIGHTS; i++) {
-          // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
-          // light will appear directional (uniform direction from all points), and we 
+          // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+          // light will appear directional (uniform direction from all points), and we
           // simply obtain a vector towards the light by directly using the stored value.
-          // Otherwise if w is 1 it will appear as a point light -- compute the vector to 
+          // Otherwise if w is 1 it will appear as a point light -- compute the vector to
           // the point light's location from the current surface point.  In either case, 
           // fade (attenuate) the light as the vector needed to reach it gets longer.  
           vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
@@ -885,10 +889,10 @@ export class Complex_Textured extends Shader {
         // convert spec_color to grayscale
         float spec_intensity = dot(spec_color.rgb, vec3(0.299, 0.587, 0.114));
         // use bump_color and N (which is the normal) to compute a bump map
-        vec3 N_bumped = normalize( N + (bump_color.rbg - 0.5) * 1.0 );
+        vec3 N_bumped = normalize( N + (bump_color.rbg - 0.5) * bumpiness );
 
         // Compute an initial (ambient) color:
-        gl_FragColor = vec4( shape_color.xyz * ambient, shape_color.w * tex_color.w ); 
+        gl_FragColor = vec4( (ambient_color * tex_color).xyz * ambient, ambient_color.w * tex_color.w ); 
         
         // Compute the final color with contributions from lights:
         gl_FragColor.xyz += phong_model_lights(
@@ -904,11 +908,12 @@ export class Complex_Textured extends Shader {
   send_material(gl, gpu, material) {
     // send_material(): Send the desired shape-wide material qualities to the
     // graphics card, where they will tweak the Phong lighting formula.
-    gl.uniform4fv(gpu.shape_color, material.color);
+    gl.uniform4fv(gpu.ambient_color, material.ambient_color);
     gl.uniform1f(gpu.ambient, material.ambient);
     gl.uniform1f(gpu.diffusivity, material.diffusivity);
     gl.uniform1f(gpu.specularity, material.specularity);
     gl.uniform1f(gpu.smoothness, material.smoothness);
+    gl.uniform1f(gpu.bumpiness, material.bumpiness);
   }
 
   send_gpu_state(gl, gpu, gpu_state, model_transform) {
@@ -960,7 +965,14 @@ export class Complex_Textured extends Shader {
 
   update_GPU(gl_context, gpu_addresses, gpu_state, model_transform, material) {
     // Fill in any missing fields in the Material object with custom defaults for this shader:
-    const defaults = {color: color(0, 0, 0, 1), ambient: 0, diffusivity: 1, specularity: 1, smoothness: 40};
+    const defaults = {
+      ambient_color: color(0, 0, 0, 1),
+      ambient: 0,
+      diffusivity: 1,
+      specularity: 1,
+      smoothness: 40,
+      bumpiness: 1,
+    };
     material = Object.assign({}, defaults, material);
 
     this.send_material(gl_context, gpu_addresses, material);
@@ -1057,6 +1069,8 @@ export class Cloud_Shader extends Shader {
       
       uniform vec2 u_resolution; // viewport resolution
       uniform float animation_time; // time
+      uniform float ambient;
+      uniform vec4 ambient_color;
       
       
       float random(vec2 st) {
@@ -1080,27 +1094,35 @@ export class Cloud_Shader extends Shader {
       }
 
       void main() {
-        vec2 uv = gl_FragCoord.xy;
-        float u= gl_FragCoord.x;
-        float v= gl_FragCoord.y;
-
-        float multiplier=1.0;
-
-        float distance_to_center = sqrt(pow(u-0.5,2.0) + pow(v-0.5,2.0));
-        multiplier=distance_to_center*0.1;
-        float an_floor= floor(animation_time);
-        float density = noise(uv * 5.0 + 0.1*multiplier) + (0.01*multiplier) ;
+        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+      
+        float noiseValue = 0.0;
+        float amplitude = 1.0;
+        float frequency = 0.5;
+        for (int i = 0; i < 2; i++) { 
+          noiseValue += amplitude * noise(uv * frequency);
+          amplitude *= 0.5;
+          frequency *= 2.0;
+        }
         
-        // density = 5.0;
-        vec3 color = vec3(1.0) * density;
+        float softNoise = smoothstep(0.4, 0.6, noiseValue); 
         
-        gl_FragColor = vec4(color, density);
+        //vec3 color = vec3(softNoise) * ambient_color.xyz;
+        vec3 color= ambient_color.xyz;
+        float bw = dot(color, vec3(0.299, 0.587, 0.114));
+        bw = pow(bw, 0.2);
+        
+        
+        float alpha = smoothstep(0.2, 0.8, softNoise)+ 0.8; 
+       // alpha=1.5; // if we don't want varying densities anymore
+        gl_FragColor = vec4(mix(color, vec3(bw), 0.5), alpha);
       }
     `;
 }
 
   send_material(gl, gpu, material) {
-    // nothing to do
+    gl.uniform4fv(gpu.ambient_color, material.ambient_color);
+    gl.uniform1f(gpu.ambient, material.ambient);
   }
 
   send_gpu_state(gl, gpu, gpu_state, model_transform) {
@@ -1123,11 +1145,12 @@ export class Cloud_Shader extends Shader {
 
   update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
     const defaults = {
-      color: color(0, 0, 0, 1),
+      ambient_color: color(0, 0, 0, 1),
+      ambient: 0,
     };
     material = Object.assign({}, defaults, material);
 
-    // this.send_material(context, gpu_addresses, material);
+    this.send_material(context, gpu_addresses, material);
     context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
 
     this.send_gpu_state(context, gpu_addresses, gpu_state, model_transform);

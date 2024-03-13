@@ -1,4 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
+import { mod } from "./math-extended.js";
 
 const {
   vec3, vec4, Mat4, Vector3, Vector
@@ -9,6 +10,15 @@ export const enum_axis = Object.freeze({
   y: 1,
   z: 2,
 });
+
+export function prettify_hour(hrs) {
+  hrs = mod(hrs, 24);
+  const min = Math.floor((hrs - (hrs | 0)) * 60);
+  const mer = hrs >= 12?"pm": "am";
+  hrs = hrs % 12 | 0;
+  if (!hrs) hrs = 12;
+  return `${hrs | 0}h ${min}m ${mer}`;
+}
 
 // helper generator to get a iteratable ranges
 export function* range(start, end, step = 1, offset = 0) {

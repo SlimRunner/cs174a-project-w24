@@ -22,6 +22,11 @@ export function ease_out(x) {
   return 1 - Math.pow(1 - x, 2);
 }
 
+export function mod(n, m) {
+  const rem = n % m;
+  return n * m >= 0 ? rem : rem ? rem + m : 0;
+}
+
 export class Float3 extends Vector3 {
   static create(x, y, z) {
     const v = new Float3(3);
@@ -77,6 +82,22 @@ export class Float3 extends Vector3 {
       this[1] = y_delta;
       this[2] = z_delta;
     }
+  }
+}
+
+export function get_spherical_coords(look_at, vectorized = true, clamp_phi = false) {
+  if (!vectorized) {
+    look_at = look_at.times(vec4(0, 0, -1, 0));
+  }
+
+  look_at = vec3(...look_at);
+  const xz_len = Math.hypot(look_at[0], look_at[2]);
+  const phi = Math.atan2(xz_len, look_at[1]);
+  const theta = Math.sign(look_at[2]) * Math.acos(look_at[0] / xz_len);
+  // const theta = Math.atan(look_at[2], look_at[0]);
+  return {
+    theta,
+    phi,
   }
 }
 
@@ -146,6 +167,22 @@ export function strip_rotation(mat) {
   );
 }
 
+export function splice_rotation(mat) {
+  return Matrix.of(
+    [mat[0][0], mat[0][1], mat[0][2], 0],
+    [mat[1][0], mat[1][1], mat[1][2], 0],
+    [mat[2][0], mat[2][1], mat[2][2], 0],
+    [0, 0, 0, 1],
+  );
+}
+
+export function get_3x3_determinant(mat) {
+  const m00 = mat[0][0], m01 = mat[0][1], m02 = mat[0][2],
+        m10 = mat[1][0], m11 = mat[1][1], m12 = mat[1][2],
+        m20 = mat[2][0], m21 = mat[2][1], m22 = mat[2][2];
+  return m00 * m11 * m22 + m01 * m12 * m20 + m02 * m10 * m21 - m02 * m11 * m20 - m01 * m10 * m22 - m00 * m12 * m21;
+}
+
 class Mat3 extends Matrix {
   // **Mat3** generates special 3x3 matrices that are useful for graphics.
   // All the methods below return a certain 3x3 matrix.
@@ -203,4 +240,37 @@ class Mat3 extends Matrix {
 
 export function clamp(val, min, max) {
   return Math.min(max, Math.max(min, val));
+}
+
+export function calculate_sun_position(hour_of_day, axis_tilt, month) {
+  // Convert hour of the day to fractional hours (0 to 23.9999)
+  const fractional_hour = (hour_of_day) % 24;
+
+  // Convert month of the year to fractional months (0 to 11.9999)
+  const fractional_month = month % 12;
+
+  // Calculate declination angle (δ) of the sun
+  const declination = 23.44 * Math.sin(2 * Math.PI * (284 + fractional_month) / 365);
+
+  // Calculate hour angle (H) of the sun
+  const hour_angle = (fractional_hour - 12) * 15;
+
+  // Calculate zenith angle (θ) of the sun
+  const sun_zenith = Math.acos(
+      Math.sin(axis_tilt) * Math.sin(declination * Math.PI / 180) +
+      Math.cos(axis_tilt) * Math.cos(declination * Math.PI / 180) * Math.cos(hour_angle * Math.PI / 180)
+  );
+
+  // Calculate azimuth angle (φ) of the sun
+  let sun_azimuth = Math.atan2(
+      -Math.sin(hour_angle * Math.PI / 180),
+      Math.tan(axis_tilt) * Math.cos(declination) - Math.sin(declination) * Math.cos(hour_angle * Math.PI / 180)
+  );
+
+  // Convert azimuth to the range [0, 2π)
+  if (sun_azimuth < 0) {
+      sun_azimuth += 2 * Math.PI;
+  }
+
+  return { sun_zenith, sun_azimuth };
 }

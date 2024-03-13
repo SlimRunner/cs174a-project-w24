@@ -1,5 +1,5 @@
 import { defs, tiny } from "../examples/common.js";
-import { Float3, custom_look_at, min_abs, lerp } from "./math-extended.js";
+import { Float3, custom_look_at, min_abs, lerp, get_spherical_coords } from "./math-extended.js";
 
 const {
   Vector,
@@ -16,7 +16,9 @@ export class Walk_Movement extends Scene {
   constructor(props) {
     super();
 
-    Object.assign(this, props);
+    if (props) {
+      Object.assign(this, props);
+    }
 
     // this is slightly more verbose than the style used by
     // tiny-graphics, but it does not destroy intellisense by
@@ -38,7 +40,7 @@ export class Walk_Movement extends Scene {
 
     this.thrust = 0;
     this.speed = 0;
-    this.position = Float3.create(0, 0, 0);
+    this.position = Float3.create(-3, 0, 0);
     this.torque = 0;
     this.angular_speed = 0;
     this.direction = 0;
@@ -114,16 +116,12 @@ export class Walk_Movement extends Scene {
   add_mouse_controls(canvas) {
     // add_mouse_controls():  Attach HTML mouse events to the drawing canvas.
     // First, measure mouse steering, for rotating the flyaround camera:
-    const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
-      vec(
-        2 * (e.clientX - rect.left) / (rect.right - rect.left) - 1,
-        2 * (e.clientY - rect.top) / (rect.bottom - rect.top) - 1
-      );
     const update_mouse = (e, rect = canvas.getBoundingClientRect()) => {
-      this.mouse.from_center[0] += 2 * e.movementX / (rect.right - rect.left);
-      this.mouse.from_center[1] = Math.max(
-        -1, Math.min(1, this.mouse.from_center[1] + e.movementY / (rect.bottom - rect.top))
-      );
+      const mouse_sensitivity_fov = this.get_fov() / 60;
+      const x_delta = 2 * mouse_sensitivity_fov * e.movementX / (rect.right - rect.left);
+      const y_delta = mouse_sensitivity_fov * e.movementY / (rect.bottom - rect.top);
+      this.mouse.from_center[0] += x_delta;
+      this.mouse.from_center[1] = Math.max(-1, Math.min(1, this.mouse.from_center[1] + y_delta));
     }
     canvas.addEventListener("mousedown", (e) => {
       e.preventDefault();
@@ -216,14 +214,13 @@ export class Walk_Movement extends Scene {
     this.live_string(
       (box) => {
         const rad2deg = 180 / Math.PI;
-        const elevation = Math.atan2(this.compass[1], Math.hypot(...this.compass)) * rad2deg * 2;
-        let compass = Math.atan2(this.compass[0], this.compass[2]) * rad2deg;
-        const foo = Array.from(this.compass).map(e => e.toFixed(2));
-        if (compass < 0) compass = 360 + compass;
+        let {theta, phi} = get_spherical_coords(this.compass);
+        theta *= rad2deg;
+        phi *= rad2deg;
+        if (theta < 0) theta = 360 + theta;
         box.textContent =
-          `Facing: ${compass.toFixed(2)}\n` + 
-          `Elevation: ${elevation.toFixed(2)}`;
-        // box.textContent = `${foo[0]}, ${foo[1]}, ${foo[2]}`
+          `Facing: ${theta.toFixed(2)}\n` + 
+          `Elevation: ${phi.toFixed(2)}`;
       }
     );
     this.new_line();
@@ -301,7 +298,7 @@ export class Walk_Movement extends Scene {
     look_around_matrix.post_multiply(Mat4.rotation(this.look_angle.v_angle, 1, 0, 0));
 
     const dir = this.consts.cardinal_dir;
-    const thrustforce = this.walk_force;
+    const thrustforce = this.get_reset_state() ? 0 : this.walk_force;
     this.thrust = 0;
     
     this.direction = this.mouse.from_center[0];
