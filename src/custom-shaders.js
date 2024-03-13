@@ -1162,26 +1162,6 @@ export class Mountain_Shader extends Phong_Shader_2 {
     super(num_lights);
   }
 
-  vertex_glsl_code() {
-    // ********* VERTEX SHADER *********
-    return `
-      ${this.shared_glsl_code()}
-      attribute vec3 position, normal;
-      // Position is expressed in object coordinates.
-
-      uniform mat4 model_transform;
-      uniform mat4 projection_camera_model_transform;
-
-      void main() {
-        // The vertex's final resting place (in NDCS):
-        gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
-        // The final normal vector in screen space.
-        N = normalize( mat3( model_transform ) * normal / squared_scale);
-        vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
-      } 
-    `;
-  }
-
   fragment_glsl_code() {
     // ********* FRAGMENT SHADER *********
     // A fragment is a pixel that's overlapped by the current triangle.
@@ -1229,11 +1209,18 @@ export class Mountain_Shader extends Phong_Shader_2 {
         return 2.3 * n_xy;
       }
 
+      // using: https://www.desmos.com/calculator/c7cuvdfgal
+      float make_sigmoid(float x, vec2 center, float radius, float scale) {
+        float f = 1.0 / (1.0 + exp((x - center.x) / radius));
+
+        return mix(f, 0.5, scale) + center.y;
+      }
+
       uniform float snow_threshold;
 
       void main() {
-        float distance = distance(vertex_worldspace, camera_center);
-        float sigmoid = 1.0 - 1.0 / (1.0 + exp(-0.001 * (distance - 1000.0)));
+        float dist = distance(vertex_worldspace, camera_center);
+        float sigmoid = 1.0 - make_sigmoid(dist, vec2(1825, 0.137), -500.0, 0.268);
         float noise = 0.5 * sin(0.1 * vertex_worldspace.x + 0.1 * vertex_worldspace.z);
         float perlin = cnoise(vertex_worldspace.xz * 0.06);
         float height_point = vertex_worldspace.y + 20.0 * perlin;
@@ -1241,8 +1228,9 @@ export class Mountain_Shader extends Phong_Shader_2 {
         if (height_point > snow_threshold) {
           snow_factor = 1.0;
         }
+        snow_factor = pow(snow_factor, sigmoid);
         // Compute an initial (ambient) color:
-        gl_FragColor = vec4( shape_ambient_color.xyz * pow(snow_factor, sigmoid), shape_color.w );
+        gl_FragColor = vec4( shape_ambient_color.xyz * snow_factor, shape_color.w );
         // Compute the final color with contributions from lights:
         gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
       }
