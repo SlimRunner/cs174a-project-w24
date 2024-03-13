@@ -246,7 +246,7 @@ export function pretty_print_grid_at(grid, px, py) {
   for (const row of grid) {
     let x = 0;
     for (const cell of row) {
-      msg += cell ? (x === px && y === py ? "░░" : "  ") : "██";
+      msg += cell ? (x === px && y === py ? "▒▒" : "  ") : "██";
       ++x;
     }
     ++y;

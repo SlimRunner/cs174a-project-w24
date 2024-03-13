@@ -305,11 +305,9 @@ export class Walk_Movement extends Scene {
     
     const this_tile = this.compute_tile(this.position);
     if (this.temp_tile && (this_tile.x !== this.temp_tile.x || this_tile.z !== this.temp_tile.z)) {
-      // pretty_print_grid_at(this.maze_props().grid, this_tile.x, this_tile.z);
+      pretty_print_grid_at(this.maze_props().grid, this_tile.x, this_tile.z);
     }
     this.temp_tile = {...this_tile};
-    // console.log(`${this_tile.x}, ${this_tile.z}: ${this_tile.state}`);
-    // console.assert(this_tile.state === 1);
 
     let look_towards = vec(0, 0);
     if (this.mouse.enabled) {
