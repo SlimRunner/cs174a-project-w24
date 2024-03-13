@@ -274,3 +274,15 @@ export function calculate_sun_position(hour_of_day, axis_tilt, month) {
 
   return { sun_zenith, sun_azimuth };
 }
+
+export function wobbly_circle(t, phase) {
+  const TAU = 2 * Math.PI;
+  const theta = TAU * t;
+  const f_theta = [Math.cos(theta), Math.sin(theta)];
+  const g_theta_0 = 0.5 * (
+      0.2 * Math.sin(3 * (TAU * (t + phase))) +
+      0.08 * Math.sin(18 * (TAU * (t - 2 * phase))) +
+      0.2 * Math.sin(7 * (TAU * (t + 3 * phase)))
+  ) + 1;
+  return [f_theta[0] * g_theta_0, f_theta[1] * g_theta_0];
+}
