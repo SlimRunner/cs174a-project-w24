@@ -50,7 +50,7 @@ export class Walk_Movement extends Scene {
     this.walk_force = 22.0;
     this.momentum_vector = vec3(0, 0, 0);
 
-    this.speed_limit = 20;
+    this.speed_limit = 15;
     this.speed_decay_factor = 0.8;
 
     this.gravity = -40;
@@ -117,7 +117,7 @@ export class Walk_Movement extends Scene {
     // add_mouse_controls():  Attach HTML mouse events to the drawing canvas.
     // First, measure mouse steering, for rotating the flyaround camera:
     const update_mouse = (e, rect = canvas.getBoundingClientRect()) => {
-      const mouse_sensitivity_fov = this.get_fov() / 60;
+      const mouse_sensitivity_fov = this.get_fov() / 65;
       const x_delta = 2 * mouse_sensitivity_fov * e.movementX / (rect.right - rect.left);
       const y_delta = mouse_sensitivity_fov * e.movementY / (rect.bottom - rect.top);
       this.mouse.from_center[0] += x_delta;
