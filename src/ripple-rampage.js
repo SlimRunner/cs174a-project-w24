@@ -577,6 +577,7 @@ export class Ripple_Rampage extends Scene {
           get_fov: () => this.fov,
           get_reset_state: () => this.resetGame,
           maze_props: () => this.maze_props,
+          cloud_mat4: () => this.transfomations.cloud,
         }))
       );
       this.click_sph_coords = get_spherical_coords(program_state.camera_transform, false);

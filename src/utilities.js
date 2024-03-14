@@ -240,13 +240,19 @@ export function pretty_print_grid(grid) {
   console.log(msg);
 }
 
-export function pretty_print_grid_at(grid, px, py) {
+export function pretty_print_grid_at(grid, pl, cl = {x: -1, y: -1}) {
   let msg = "";
   let y = 0;
   for (const row of grid) {
     let x = 0;
     for (const cell of row) {
-      msg += cell ? (x === px && y === py ? "▒▒" : "  ") : "██";
+      let tile = cell ? "  " : "██";
+      if (x === pl.x && y === pl.y) {
+        tile = "╳╳";
+      } else if (x === cl.x && y === cl.y) {
+        tile = "▒▒";
+      }
+      msg += tile;
       ++x;
     }
     ++y;
