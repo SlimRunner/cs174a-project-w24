@@ -301,14 +301,25 @@ export class Walk_Movement extends Scene {
     if (grid?.length && grid[0]?.length) {
       grid_state = grid[z][x];
     }
+
+    if (x === tiles.x && z === tiles.z) {
+      if (this.height < this.min_height) {
+        this.height = lerp(this.height, 2, 0.1);
+      }
+      this.min_height = 2;
+    } else {
+      this.min_height = 1.5;
+    }
+
     return {
-      state: x === tiles.x && z === tiles.z ? 0 : grid_state,
+      state: grid_state,
       x, z
     };
   }
 
   walk(state, dt) {
     let look_around_matrix = Mat4.identity();
+    let {tiles: maze_mid} = this.maze_props();
     
     const this_tile = this.compute_tile(this.position);
     if (this.temp_tile && (this_tile.x !== this.temp_tile.x || this_tile.z !== this.temp_tile.z)) {
@@ -348,6 +359,12 @@ export class Walk_Movement extends Scene {
       0,
       heading_sin
     );
+    
+    // if (this.position.x === maze_mid.x && this.position.z === maze_mid.z) {
+    //   this.min_height = 2;
+    // } else {
+    //   this.min_height = 1.5;
+    // }
     const airborne = this.height > this.min_height;
     const walk_vector = this.map_cardinal_to_vec(this.dir_flag);
 
