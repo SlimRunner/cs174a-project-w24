@@ -1240,7 +1240,7 @@ export class Mountain_Shader extends Phong_Shader_2 {
         return 2.3 * n_xy;
       }
 
-      // using: https://www.desmos.com/calculator/c7cuvdfgal
+      // using: https://www.desmos.com/calculator/g8gnfhgbwb
       float make_sigmoid(float x, vec2 center, float radius, float scale) {
         float f = 1.0 / (1.0 + exp((x - center.x) / radius));
 
@@ -1251,7 +1251,7 @@ export class Mountain_Shader extends Phong_Shader_2 {
 
       void main() {
         float dist = distance(vertex_worldspace, camera_center);
-        float sigmoid = 1.0 - make_sigmoid(dist, vec2(1825, 0.137), -500.0, 0.268);
+        float sigmoid = 1.0 - make_sigmoid(dist, vec2(2060.0, 0.05), -536.0, 0.05);
         float noise = 0.5 * sin(0.1 * vertex_worldspace.x + 0.1 * vertex_worldspace.z);
         float perlin = cnoise(vertex_worldspace.xz * 0.06);
         float height_point = vertex_worldspace.y + 20.0 * perlin;
