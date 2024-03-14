@@ -40,6 +40,8 @@ import {
   calculate_sun_position,
   get_3x3_determinant,
   wobbly_circle,
+  custom_look_at,
+  splice_rotation,
 } from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
@@ -80,6 +82,8 @@ export class Ripple_Rampage extends Scene {
     this.cam_loc = vec3(0, 0, 0);
     this.win_count = 0;
 
+    this.tuto_index = 0;
+
     this.maze_props = {
       grid: null,
       length: 60,
@@ -97,7 +101,7 @@ export class Ripple_Rampage extends Scene {
     this.sun_color = null;
     this.ambient_color = null;
     this.click_sph_coords = null;
-    this.hour_of_day = 12;
+    this.hour_of_day = 6;
     this.time_speed = 1;
     
     this.flash_light = false;
@@ -113,6 +117,8 @@ export class Ripple_Rampage extends Scene {
       cloud: Mat4.scale(1, 1, 1).times(Mat4.translation(0, 5, 0)),
       well: Mat4.translation(0, 0.3, 0).times(Mat4.scale(1.25, 1, 1.25)),
       lake: Mat4.translation(0, 0.01, 0).times(Mat4.scale(1.2, 1, 1.2)),
+      center_tuto: Mat4.translation(0, 1, 0)
+        .times(Mat4.scale(0.15, 0.15, 0.15)),
     };
 
     // At the beginning of our program, load one of each of these shape definitions onto the GPU.
@@ -374,6 +380,8 @@ export class Ripple_Rampage extends Scene {
         // TODO: add a message to the user to get closer to the cloud
         console.log("too far");
         return;
+      } else {
+        this.tuto_index = this.tuto_index ? this.tuto_index : 1;
       }
       this.addRainButton = true
     });
@@ -449,7 +457,7 @@ export class Ripple_Rampage extends Scene {
         this.rainVelocity.splice(index, 1);
         this.rainTransform.splice(index, 1);
         this.addRipple(time, Mat4.translation(rainx, 0, rainz));
-        this.lakeTransform[1][3] = this.lakeTransform[1][3] + 0.001;
+        this.lakeTransform[1][3] = this.lakeTransform[1][3] + 0.002;
         index = index-1;
         numDrops = numDrops-1;
       }
@@ -662,6 +670,7 @@ export class Ripple_Rampage extends Scene {
 
     // TODO: prevent distortion when looking up or down
     if (this.captured_object?.success && this.captured_object.capturable) {
+      if (this.tuto_index == 2) this.tuto_index = 3;
       const new_transform = strip_rotation(cam_lead
         .times(Mat4.translation(0, 3, -3))
         .map((x, i) => Vector.from(
@@ -810,6 +819,40 @@ export class Ripple_Rampage extends Scene {
     }
     // =========================================================
     // Below this line only GUI elements must be rendered.
+
+    if (this.tuto_index < 3 && !this.resetGame) {
+      let msg = [
+        "Look up!",
+        "Fill the well to begin",
+        "Where's the cloud?",
+      ][this.tuto_index];
+      let disp = [-5, -16, -12][this.tuto_index];
+      this.shapes.text.set_string(msg, GL);
+      this.shapes.text.draw(
+        context,
+        program_state,
+        splice_rotation(CMT)
+          .times(this.transfomations.center_tuto)
+          .times(Mat4.translation(disp, 0, 0)),
+        this.materials.text_image
+      );
+      msg = [
+        "Press R",
+        "Make it rain!",
+        "Jumping might help",
+      ][this.tuto_index];
+      disp = [-5, -7.5, -12][this.tuto_index];
+      this.shapes.text.set_string(msg, GL);
+      this.shapes.text.draw(
+        context,
+        program_state,
+        Mat4.translation(0, this.transfomations.cloud[1][3] + 2, 0)
+          .times(splice_rotation(CMT))
+          .times(this.transfomations.center_tuto)
+          .times(Mat4.translation(disp, 0, 0)),
+        this.materials.text_image
+      );
+    }
     
     this.shapes.gui_box.draw(
       context,
@@ -825,18 +868,23 @@ export class Ripple_Rampage extends Scene {
         this.resetGame = true;
       }
     }
-    else if (t < this.resetGameTime + 10.0){
+    else if (t < this.resetGameTime + 5.0){
       //logic for locking player position
-      this.lakeTransform[1][3] = 0.4 - 0.39 * (t-this.resetGameTime) / 10.0;
+      this.lakeTransform[1][3] = 0.4 - 0.39 * (t-this.resetGameTime) / 5.0;
       this.shapes.text.set_string(
-        "GAME OVER, Please Stand Still as the Maze Resets",
-        context.context
+        [
+          "Stand still. The maze will rearrange",
+          "Good Job. The maze will get bigger",
+          "Great! Now lets try a real challenge",
+          "Congratulations! You've beaten the game.",
+        ][this.win_count],
+        GL
       );
       [
-        {T: [-6.5, 1, -8], S: [0.2, 0.5, 0.5], R: [0, 0, 1, 0]},
-        {T: [6.5, 1, 8 ], S: [0.2, 0.5, 0.5 ],  R: [1*3.14, 0, 1, 0]},
-        {T: [8, 1, -6.5], S: [0.5, 0.5, 0.2], R: [-0.5*3.14, 0, 1, 0]},
-        {T: [-8, 1, 6.5], S: [0.5, 0.5, 0.2], R: [0.5*3.14, 0, 1, 0]},
+        {T: [-6.5, 1, -8], S: [0.25, 0.5, 0.5], R: [0, 0, 1, 0]},
+        {T: [6.5, 1, 8 ], S: [0.25, 0.5, 0.5 ],  R: [1*3.14, 0, 1, 0]},
+        {T: [8, 1, -6.5], S: [0.5, 0.5, 0.25], R: [-0.5*3.14, 0, 1, 0]},
+        {T: [-8, 1, 6.5], S: [0.5, 0.5, 0.25], R: [0.5*3.14, 0, 1, 0]},
       ].forEach(({T, S, R}) => {
         this.shapes.text.draw(
           context,
@@ -847,6 +895,10 @@ export class Ripple_Rampage extends Scene {
       })
     }
     else{
+      console.log("resetting maze");
+
+      if (this.tuto_index == 1) this.tuto_index = 2;
+
       this.maze_props.length = (7 + 3 * this.win_count) * 60 / 7;
       this.maze_props.tiles.x = 7 + 3 * this.win_count;
       this.maze_props.tiles.z = this.maze_props.tiles.x;
@@ -854,14 +906,13 @@ export class Ripple_Rampage extends Scene {
       const maze_size = this.maze_props.length;
       this.transfomations.maze=Mat4.scale(maze_size, maze_size, maze_size)
       reset_maze(this.maze_props);
-      console.log("resetting maze");
       this.shapes.maze_walls.generate(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio);
       this.shapes.maze_walls.refresh(GL);
       this.shapes.maze_tiles.generate(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio);
       this.shapes.maze_tiles.refresh(GL);
       this.reset_cloud();
       
-      this.win_count += 1;
+      this.win_count = (this.win_count + 1) % 4;
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position
     }
