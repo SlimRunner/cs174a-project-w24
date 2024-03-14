@@ -864,11 +864,12 @@ export class Ripple_Rampage extends Scene {
       this.shapes.maze_walls.refresh(GL);
       this.shapes.maze_tiles.generate(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio);
       this.shapes.maze_tiles.refresh(GL);
+      this.reset_cloud();
+      
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position
     }
 
-    this.reset_cloud();
     this.clicked_on_frame = false;
   }
 }
