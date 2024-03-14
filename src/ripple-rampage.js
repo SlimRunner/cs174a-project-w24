@@ -576,8 +576,6 @@ export class Ripple_Rampage extends Scene {
     // this makes clear what I am calling
     const GL = context.context;
     
-    let model_transform = Mat4.identity();
-    
     const CMT = program_state.camera_transform;
     const cam_loc = CMT
       .sub_block([0, 3], [3, 4])
@@ -816,7 +814,7 @@ export class Ripple_Rampage extends Scene {
     this.shapes.gui_box.draw(
       context,
       program_state,
-      model_transform.times(Mat4.scale(10, 1, 10)),
+      Mat4.scale(10, 1, 10),
       this.materials.ui_crosshair
     );
 
@@ -837,25 +835,25 @@ export class Ripple_Rampage extends Scene {
       this.shapes.text.draw(
         context,
         program_state,
-        model_transform.times(Mat4.translation(-6.5, 1, -8)).times(Mat4.scale(0.2, 0.5, 0.5)),
+        Mat4.translation(-6.5, 1, -8).times(Mat4.scale(0.2, 0.5, 0.5)),
         this.materials.text_image
       );
       this.shapes.text.draw(
         context,
         program_state,
-        model_transform.times(Mat4.translation(6.5, 1, 8)).times(Mat4.scale(0.2, 0.5, 0.5)).times(Mat4.rotation(1*3.14, 0, 1, 0)),
+        Mat4.translation(6.5, 1, 8).times(Mat4.scale(0.2, 0.5, 0.5)).times(Mat4.rotation(1*3.14, 0, 1, 0)),
         this.materials.text_image
       );
       this.shapes.text.draw(
         context,
         program_state,
-        model_transform.times(Mat4.translation(8, 1, -6.5)).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(-0.5*3.14, 0, 1, 0)),
+        Mat4.translation(8, 1, -6.5).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(-0.5*3.14, 0, 1, 0)),
         this.materials.text_image
       );
       this.shapes.text.draw(
         context,
         program_state,
-        model_transform.times(Mat4.translation(-8, 1, 6.5)).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(0.5*3.14, 0, 1, 0)),
+        Mat4.translation(-8, 1, 6.5).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(0.5*3.14, 0, 1, 0)),
         this.materials.text_image
       );
     }
