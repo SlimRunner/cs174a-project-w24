@@ -305,7 +305,13 @@ export class Walk_Movement extends Scene {
     
     const this_tile = this.compute_tile(this.position);
     if (this.temp_tile && (this_tile.x !== this.temp_tile.x || this_tile.z !== this.temp_tile.z)) {
-      pretty_print_grid_at(this.maze_props().grid, this_tile.x, this_tile.z);
+      const mtx = this.cloud_mat4();
+      const cl = this.compute_tile([mtx[0][3], 0, mtx[2][3]]);
+      pretty_print_grid_at(
+        this.maze_props().grid,
+        {x: this_tile.x, y: this_tile.z},
+        {x: cl.x, y: cl.z},
+      );
     }
     this.temp_tile = {...this_tile};
 
