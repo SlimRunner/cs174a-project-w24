@@ -11,11 +11,36 @@ import {
   Cloud_Shader,
   Mountain_Shader,
 } from "./custom-shaders.js";
-import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle, Text_Line } from "./custom-shapes.js";
+import {
+  Square,
+  Lake_Mesh,
+  Maze_Walls,
+  Maze_Tiles,
+  Circle,
+  Text_Line,
+} from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour, range, get_farthest, pick_random } from "./utilities.js";
-import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp, calculate_sun_position, get_3x3_determinant, wobbly_circle } from "./math-extended.js";
+import {
+  check_scene_intersection,
+  make_maze,
+  pretty_print_grid,
+  get_square_face,
+  prettify_hour,
+  range,
+  get_farthest,
+  pick_random,
+} from "./utilities.js";
+import {
+  lerp,
+  ease_out,
+  strip_rotation,
+  get_spherical_coords,
+  clamp,
+  calculate_sun_position,
+  get_3x3_determinant,
+  wobbly_circle,
+} from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
@@ -266,9 +291,6 @@ export class Ripple_Rampage extends Scene {
         },
       ]
     }
-
-    window.clickables = this.groups.clickables;
-    window.transfomations = this.transfomations;
 
     this.captured_object = null;
     this.on_click = this.on_click.bind(this);
@@ -554,8 +576,6 @@ export class Ripple_Rampage extends Scene {
     // this makes clear what I am calling
     const GL = context.context;
     
-    let model_transform = Mat4.identity();
-    
     const CMT = program_state.camera_transform;
     const cam_loc = CMT
       .sub_block([0, 3], [3, 4])
@@ -794,7 +814,7 @@ export class Ripple_Rampage extends Scene {
     this.shapes.gui_box.draw(
       context,
       program_state,
-      model_transform.times(Mat4.scale(10, 1, 10)),
+      Mat4.scale(10, 1, 10),
       this.materials.ui_crosshair
     );
 
@@ -808,31 +828,23 @@ export class Ripple_Rampage extends Scene {
     else if (t < this.resetGameTime + 10.0){
       //logic for locking player position
       this.lakeTransform[1][3] = 0.4 - 0.39 * (t-this.resetGameTime) / 10.0;
-      this.shapes.text.set_string('GAME OVER, Please Stand Still as the Maze Resets', context.context);
-      this.shapes.text.draw(
-        context,
-        program_state,
-        model_transform.times(Mat4.translation(-6.5, 1, -8)).times(Mat4.scale(0.2, 0.5, 0.5)),
-        this.materials.text_image
+      this.shapes.text.set_string(
+        "GAME OVER, Please Stand Still as the Maze Resets",
+        context.context
       );
-      this.shapes.text.draw(
-        context,
-        program_state,
-        model_transform.times(Mat4.translation(6.5, 1, 8)).times(Mat4.scale(0.2, 0.5, 0.5)).times(Mat4.rotation(1*3.14, 0, 1, 0)),
-        this.materials.text_image
-      );
-      this.shapes.text.draw(
-        context,
-        program_state,
-        model_transform.times(Mat4.translation(8, 1, -6.5)).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(-0.5*3.14, 0, 1, 0)),
-        this.materials.text_image
-      );
-      this.shapes.text.draw(
-        context,
-        program_state,
-        model_transform.times(Mat4.translation(-8, 1, 6.5)).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(0.5*3.14, 0, 1, 0)),
-        this.materials.text_image
-      );
+      [
+        {T: [-6.5, 1, -8], S: [0.2, 0.5, 0.5], R: [0, 0, 1, 0]},
+        {T: [6.5, 1, 8 ], S: [0.2, 0.5, 0.5 ],  R: [1*3.14, 0, 1, 0]},
+        {T: [8, 1, -6.5], S: [0.5, 0.5, 0.2], R: [-0.5*3.14, 0, 1, 0]},
+        {T: [-8, 1, 6.5], S: [0.5, 0.5, 0.2], R: [0.5*3.14, 0, 1, 0]},
+      ].forEach(({T, S, R}) => {
+        this.shapes.text.draw(
+          context,
+          program_state,
+          Mat4.translation(...T).times(Mat4.scale(...S)).times(Mat4.rotation(...R)),
+          this.materials.text_image
+        );
+      })
     }
     else{
       make_7x7_maze(this.maze_props);
@@ -841,11 +853,12 @@ export class Ripple_Rampage extends Scene {
       this.shapes.maze_walls.refresh(GL);
       this.shapes.maze_tiles.generate(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio);
       this.shapes.maze_tiles.refresh(GL);
+      this.reset_cloud();
+      
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position
     }
 
-    this.reset_cloud();
     this.clicked_on_frame = false;
   }
 }

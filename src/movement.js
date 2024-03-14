@@ -1,5 +1,12 @@
 import { defs, tiny } from "../examples/common.js";
-import { Float3, custom_look_at, min_abs, lerp, get_spherical_coords, vector_projection } from "./math-extended.js";
+import {
+  Float3,
+  custom_look_at,
+  min_abs,
+  lerp,
+  get_spherical_coords,
+  vector_projection,
+} from "./math-extended.js";
 import { pretty_print_grid_at } from "./utilities.js";
 
 const {

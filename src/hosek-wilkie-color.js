@@ -86,20 +86,20 @@ function eval_quintic_bezier(control_points, t) {
   const t3 = t2 * t;
   const t4 = t3 * t;
   const t5 = t4 * t;
-  
+
   const t_inv = 1.0 - t;
   const t_inv2 = t_inv * t_inv;
   const t_inv3 = t_inv2 * t_inv;
   const t_inv4 = t_inv3 * t_inv;
   const t_inv5 = t_inv4 * t_inv;
-  	
+
   return (
-  	control_points[0] *             t_inv5 +
-  	control_points[1] *  5.0 * t  * t_inv4 +
-  	control_points[2] * 10.0 * t2 * t_inv3 +
-  	control_points[3] * 10.0 * t3 * t_inv2 +
-  	control_points[4] *  5.0 * t4 * t_inv  +
-  	control_points[5] *        t5
+    control_points[0] *             t_inv5 +
+    control_points[1] *  5.0 * t  * t_inv4 +
+    control_points[2] * 10.0 * t2 * t_inv3 +
+    control_points[3] * 10.0 * t3 * t_inv2 +
+    control_points[4] *  5.0 * t4 * t_inv  +
+    control_points[5] *        t5
   );
 }
 
@@ -119,19 +119,19 @@ function get_control_points_radiance(channel, albedo, turbidity, control_points)
 function get_coeffs(channel, albedo, turbidity, sun_zenith, coeffs) {
   const t = transform_sun_zenith(sun_zenith);
   for (let i = 0; i < 9; ++i) {
-  	let control_points = [0, 0, 0, 0, 0, 0];
-  	get_control_points(channel, albedo, turbidity, i, control_points);
-  	coeffs[i] = eval_quintic_bezier(control_points, t);
+    let control_points = [0, 0, 0, 0, 0, 0];
+    get_control_points(channel, albedo, turbidity, i, control_points);
+    coeffs[i] = eval_quintic_bezier(control_points, t);
   }
 }
 
 function mean_spectral_radiance(albedo, turbidity, sun_zenith) {
   const spectral_radiance = vec3(0, 0, 0);
   for (let i = 0; i < 3; ++i) {
-  	let control_points = [0, 0, 0, 0, 0, 0];
-  	get_control_points_radiance(i, albedo, turbidity, control_points);
-  	const t = transform_sun_zenith(sun_zenith);
-  	spectral_radiance[i] = eval_quintic_bezier(control_points, t);
+    let control_points = [0, 0, 0, 0, 0, 0];
+    get_control_points_radiance(i, albedo, turbidity, control_points);
+    const t = transform_sun_zenith(sun_zenith);
+    spectral_radiance[i] = eval_quintic_bezier(control_points, t);
   }
   return spectral_radiance;
 }
@@ -147,19 +147,19 @@ function F(theta, gamma, coeffs) {
   const H = coeffs[8];
   const I = coeffs[7];
   const chi = (1.0 + Math.pow(Math.cos(gamma), 2.0)) / Math.pow(1.0 + H*H - 2.0 * H * Math.cos(gamma), 1.5);
-  
+
   return (
-  	(1.0 + A * Math.exp(B / (Math.cos(theta) + 0.01))) *
-  	(C + D * Math.exp(E * gamma) + F * Math.pow(Math.cos(gamma), 2.0) + G * chi + I * Math.sqrt(Math.cos(theta)))
+    (1.0 + A * Math.exp(B / (Math.cos(theta) + 0.01))) *
+    (C + D * Math.exp(E * gamma) + F * Math.pow(Math.cos(gamma), 2.0) + G * chi + I * Math.sqrt(Math.cos(theta)))
   );
 }
 
 function spectral_radiance(theta, gamma, albedo, turbidity, sun_zenith) {
   const XYZ = vec3(0, 0, 0);
   for (let i = 0; i < 3; ++i) {
-  	let coeffs = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-  	get_coeffs(i, albedo, turbidity, sun_zenith, coeffs);
-  	XYZ[i] = F(theta, gamma, coeffs);
+    let coeffs = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    get_coeffs(i, albedo, turbidity, sun_zenith, coeffs);
+    XYZ[i] = F(theta, gamma, coeffs);
   }
   return XYZ;
 }
@@ -204,7 +204,7 @@ function tonemap(color, exposure) {
       a[2] / b[2]
     );
   }
-  
+
   return divide_pairwise(
     two,
     one.plus(
@@ -243,7 +243,7 @@ export function get_average_sky_color({
   const RGB = XYZ_to_RGB(sum_of_samples);
   // adjust brightness gain
   const col = tonemap(RGB, 0.1);
-  
+
   if (sun_zenith > H_PI) {
     let alpha = 1.0 / (10.0 * (sun_zenith - H_PI) + 1.0);
     col.scale_by(alpha);
@@ -262,9 +262,9 @@ export function get_sun_color({
   const sun_zenith_safe = clamp(sun_zenith, 0.0, H_PI);
   const view_zenith = sun_zenith_safe;
   const view_azimuth = sun_azimuth;
-  
+
   const sample = sample_sky(view_zenith, view_azimuth, sun_zenith_safe, sun_azimuth);
-  
+
   const RGB = XYZ_to_RGB(sample);
   // adjust brightness gain
   const col = tonemap(RGB, 0.1);
