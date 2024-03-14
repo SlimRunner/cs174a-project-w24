@@ -11,11 +11,36 @@ import {
   Cloud_Shader,
   Mountain_Shader,
 } from "./custom-shaders.js";
-import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle, Text_Line } from "./custom-shapes.js";
+import {
+  Square,
+  Lake_Mesh,
+  Maze_Walls,
+  Maze_Tiles,
+  Circle,
+  Text_Line,
+} from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour, range, get_farthest, pick_random } from "./utilities.js";
-import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp, calculate_sun_position, get_3x3_determinant, wobbly_circle } from "./math-extended.js";
+import {
+  check_scene_intersection,
+  make_maze,
+  pretty_print_grid,
+  get_square_face,
+  prettify_hour,
+  range,
+  get_farthest,
+  pick_random,
+} from "./utilities.js";
+import {
+  lerp,
+  ease_out,
+  strip_rotation,
+  get_spherical_coords,
+  clamp,
+  calculate_sun_position,
+  get_3x3_determinant,
+  wobbly_circle,
+} from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
 const {
@@ -266,9 +291,6 @@ export class Ripple_Rampage extends Scene {
         },
       ]
     }
-
-    window.clickables = this.groups.clickables;
-    window.transfomations = this.transfomations;
 
     this.captured_object = null;
     this.on_click = this.on_click.bind(this);
@@ -808,7 +830,10 @@ export class Ripple_Rampage extends Scene {
     else if (t < this.resetGameTime + 10.0){
       //logic for locking player position
       this.lakeTransform[1][3] = 0.4 - 0.39 * (t-this.resetGameTime) / 10.0;
-      this.shapes.text.set_string('GAME OVER, Please Stand Still as the Maze Resets', context.context);
+      this.shapes.text.set_string(
+        "GAME OVER, Please Stand Still as the Maze Resets",
+        context.context
+      );
       this.shapes.text.draw(
         context,
         program_state,

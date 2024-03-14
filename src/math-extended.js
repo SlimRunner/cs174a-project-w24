@@ -180,7 +180,9 @@ export function get_3x3_determinant(mat) {
   const m00 = mat[0][0], m01 = mat[0][1], m02 = mat[0][2],
         m10 = mat[1][0], m11 = mat[1][1], m12 = mat[1][2],
         m20 = mat[2][0], m21 = mat[2][1], m22 = mat[2][2];
-  return m00 * m11 * m22 + m01 * m12 * m20 + m02 * m10 * m21 - m02 * m11 * m20 - m01 * m10 * m22 - m00 * m12 * m21;
+
+  return m00 * m11 * m22 + m01 * m12 * m20 + m02 * m10 * m21
+        -m02 * m11 * m20 - m01 * m10 * m22 - m00 * m12 * m21;
 }
 
 class Mat3 extends Matrix {
@@ -264,7 +266,8 @@ export function calculate_sun_position(hour_of_day, axis_tilt, month) {
   // Calculate azimuth angle (φ) of the sun
   let sun_azimuth = Math.atan2(
       -Math.sin(hour_angle * Math.PI / 180),
-      Math.tan(axis_tilt) * Math.cos(declination) - Math.sin(declination) * Math.cos(hour_angle * Math.PI / 180)
+      Math.tan(axis_tilt) * Math.cos(declination) -
+      Math.sin(declination) * Math.cos(hour_angle * Math.PI / 180)
   );
 
   // Convert azimuth to the range [0, 2π)
