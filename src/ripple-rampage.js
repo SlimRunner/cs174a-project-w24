@@ -14,7 +14,7 @@ import {
 import { Square, Lake_Mesh, Maze_Walls, Maze_Tiles, Circle, Text_Line } from "./custom-shapes.js";
 import { Walk_Movement } from "./movement.js";
 import { Shape_From_File } from "../examples/obj-file-demo.js";
-import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour, range } from "./utilities.js";
+import { check_scene_intersection, make_maze, pretty_print_grid, get_square_face, prettify_hour, range, get_farthest, pick_random } from "./utilities.js";
 import { lerp, ease_out, strip_rotation, get_spherical_coords, clamp, calculate_sun_position, get_3x3_determinant, wobbly_circle } from "./math-extended.js";
 import { get_average_sky_color, get_sun_color } from "./hosek-wilkie-color.js";
 
@@ -272,6 +272,7 @@ export class Ripple_Rampage extends Scene {
 
     this.captured_object = null;
     this.on_click = this.on_click.bind(this);
+    this.reset_cloud = this.reset_cloud.bind(this);
 
     this.initial_camera_location = Mat4.look_at(
       vec3(0, 10, 20),
@@ -517,6 +518,22 @@ export class Ripple_Rampage extends Scene {
       this.captured_object = this.groups.clickables[mesh_index];
     }
   }
+
+  reset_cloud() {
+    let [x, z] = pick_random(
+      get_farthest(
+        this.maze_props.grid,
+        this.maze_props.tiles.x,
+        this.maze_props.tiles.z
+      )
+    );
+
+    x = this.maze_props.length * ((x + 0.5) / (2 * this.maze_props.tiles.x + 1) - 0.5);
+    z = this.maze_props.length * ((z + 0.5) / (2 * this.maze_props.tiles.z + 1) - 0.5);
+
+    this.transfomations.cloud[0][3] = x;
+    this.transfomations.cloud[2][3] = z;
+  }
   
   display(context, program_state) {
     // display():  Called once per frame of animation.
@@ -563,6 +580,7 @@ export class Ripple_Rampage extends Scene {
         }))
       );
       this.click_sph_coords = get_spherical_coords(program_state.camera_transform, false);
+      this.reset_cloud();
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
@@ -826,6 +844,7 @@ export class Ripple_Rampage extends Scene {
       //reset maze, respawn cloud, unlock player position
     }
 
+    this.reset_cloud();
     this.clicked_on_frame = false;
   }
 }

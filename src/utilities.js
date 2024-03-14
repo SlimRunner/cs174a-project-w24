@@ -311,3 +311,60 @@ export function get_square_face({
     indices
   }
 }
+
+export function pick_random(arr) {
+  return arr[Math.random() * arr.length | 0];
+}
+
+export function get_farthest(grid, start_x, start_y, kernel_size = 5) {
+  const match = grid[start_y][start_x];
+
+  const get_neighbors = (h, g) => {
+    const x_max = g[0].length;
+    const y_max = g   .length;
+
+    return [
+      { x: h.x + 1, y: h.y     },
+      { x: h.x    , y: h.y + 1 },
+      { x: h.x - 1, y: h.y     },
+      { x: h.x    , y: h.y - 1 },
+    ].filter(v => {
+      return (
+        0 <= v.x && v.x < x_max &&
+        0 <= v.y && v.y < y_max &&
+        !g[v.y][v.x]
+      );
+    });
+  };
+
+  // an array is horrible as a queue but JS does not offer anything
+  // better so this will do for now
+  const queue = [{
+    x: start_x,
+    y: start_y,
+    step: 0,
+  }];
+
+  // start visited map and mark non matching values as visited already
+  const visited = grid.map(row => row.map(col => (col === match ? 0 : 1)));
+  const depth = grid.map(row => row.map(_ => null));
+
+  visited[start_y][start_x] = 1;
+  depth[start_y][start_x] = 0;
+
+  while (queue.length) {
+    const {x, y, step} = queue.shift();
+    get_neighbors({x, y}, visited).forEach((there) => {
+      visited[there.y][there.x] = 1;
+      depth[there.y][there.x] = {...there, step: step + 1};
+      queue.push(depth[there.y][there.x]);
+    });
+  }
+
+  return depth
+    .flat()
+    .filter(e => e)
+    .sort((a, b) => b.step - a.step)
+    .slice(0, kernel_size)
+    .map(e => [e.x, e.y]);
+}
