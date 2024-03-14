@@ -832,30 +832,19 @@ export class Ripple_Rampage extends Scene {
         "GAME OVER, Please Stand Still as the Maze Resets",
         context.context
       );
-      this.shapes.text.draw(
-        context,
-        program_state,
-        Mat4.translation(-6.5, 1, -8).times(Mat4.scale(0.2, 0.5, 0.5)),
-        this.materials.text_image
-      );
-      this.shapes.text.draw(
-        context,
-        program_state,
-        Mat4.translation(6.5, 1, 8).times(Mat4.scale(0.2, 0.5, 0.5)).times(Mat4.rotation(1*3.14, 0, 1, 0)),
-        this.materials.text_image
-      );
-      this.shapes.text.draw(
-        context,
-        program_state,
-        Mat4.translation(8, 1, -6.5).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(-0.5*3.14, 0, 1, 0)),
-        this.materials.text_image
-      );
-      this.shapes.text.draw(
-        context,
-        program_state,
-        Mat4.translation(-8, 1, 6.5).times(Mat4.scale(0.5, 0.5, 0.2)).times(Mat4.rotation(0.5*3.14, 0, 1, 0)),
-        this.materials.text_image
-      );
+      [
+        {T: [-6.5, 1, -8], S: [0.2, 0.5, 0.5], R: [0, 0, 1, 0]},
+        {T: [6.5, 1, 8 ], S: [0.2, 0.5, 0.5 ],  R: [1*3.14, 0, 1, 0]},
+        {T: [8, 1, -6.5], S: [0.5, 0.5, 0.2], R: [-0.5*3.14, 0, 1, 0]},
+        {T: [-8, 1, 6.5], S: [0.5, 0.5, 0.2], R: [0.5*3.14, 0, 1, 0]},
+      ].forEach(({T, S, R}) => {
+        this.shapes.text.draw(
+          context,
+          program_state,
+          Mat4.translation(...T).times(Mat4.scale(...S)).times(Mat4.rotation(...R)),
+          this.materials.text_image
+        );
+      })
     }
     else{
       make_7x7_maze(this.maze_props);
