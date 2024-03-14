@@ -63,7 +63,7 @@ const {
 
 const Flat_Sphere = defs.Subdivision_Sphere.prototype.make_flat_shaded_version();
 
-function make_7x7_maze(props) {
+function reset_maze(props) {
   props.grid = make_maze(
     props.tiles.x,
     props.tiles.z,
@@ -78,6 +78,7 @@ export class Ripple_Rampage extends Scene {
     super();
 
     this.cam_loc = vec3(0, 0, 0);
+    this.win_count = 0;
 
     this.maze_props = {
       grid: null,
@@ -90,7 +91,7 @@ export class Ripple_Rampage extends Scene {
     };
     const maze_size = this.maze_props.length;
     this.maze_height_ratio = 1.25;
-    make_7x7_maze(this.maze_props);
+    reset_maze(this.maze_props);
 
     // initialized in display, do not use prior
     this.sun_color = null;
@@ -601,7 +602,6 @@ export class Ripple_Rampage extends Scene {
         }))
       );
       this.click_sph_coords = get_spherical_coords(program_state.camera_transform, false);
-      this.reset_cloud();
     }
 
     const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
@@ -847,7 +847,13 @@ export class Ripple_Rampage extends Scene {
       })
     }
     else{
-      make_7x7_maze(this.maze_props);
+      this.maze_props.length = (7 + 3 * this.win_count) * 60 / 7;
+      this.maze_props.tiles.x = 7 + 3 * this.win_count;
+      this.maze_props.tiles.z = this.maze_props.tiles.x;
+      this.maze_props.cutout = 3 + this.win_count;
+      const maze_size = this.maze_props.length;
+      this.transfomations.maze=Mat4.scale(maze_size, maze_size, maze_size)
+      reset_maze(this.maze_props);
       console.log("resetting maze");
       this.shapes.maze_walls.generate(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio);
       this.shapes.maze_walls.refresh(GL);
@@ -855,6 +861,7 @@ export class Ripple_Rampage extends Scene {
       this.shapes.maze_tiles.refresh(GL);
       this.reset_cloud();
       
+      this.win_count += 1;
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position
     }
