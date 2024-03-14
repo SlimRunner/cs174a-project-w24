@@ -94,7 +94,7 @@ export class Ripple_Rampage extends Scene {
       cutout: 3
     };
     const maze_size = this.maze_props.length;
-    this.maze_height_ratio = 1.25;
+    this.maze_height_ratio = 1.05;
     reset_maze(this.maze_props);
 
     // initialized in display, do not use prior
@@ -910,9 +910,13 @@ export class Ripple_Rampage extends Scene {
       this.shapes.maze_walls.refresh(GL);
       this.shapes.maze_tiles.generate(this.maze_props.grid, this.transfomations.maze, this.maze_height_ratio);
       this.shapes.maze_tiles.refresh(GL);
+
+      // prevent cheating
+      this.captured_object.success = false;
+      this.captured_object = null;
       this.reset_cloud();
       
-      this.win_count = (this.win_count + 1) % 4;
+      this.win_count = (this.win_count + 1) % 3;
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position
     }
