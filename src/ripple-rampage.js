@@ -912,8 +912,10 @@ export class Ripple_Rampage extends Scene {
       this.shapes.maze_tiles.refresh(GL);
 
       // prevent cheating
-      this.captured_object.success = false;
-      this.captured_object = null;
+      if (this.captured_object) {
+        this.captured_object.success = false;
+        this.captured_object = null;
+      }
       this.reset_cloud();
       
       this.win_count = (this.win_count + 1) % 3;
