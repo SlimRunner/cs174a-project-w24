@@ -323,6 +323,10 @@ export class Ripple_Rampage extends Scene {
 
     this.resetGame = false;
     this.resetGameTime = 0;
+
+    this.audio = new Audio('music/background_music.mp3');
+    this.audio.volume = 0.2;
+    this.playAudio = false;
   }
 
   add_mouse_controls(canvas) {
@@ -400,12 +404,14 @@ export class Ripple_Rampage extends Scene {
       this.time_speed = 1;
     });
     this.new_line();
+    this.make_key_insensitive("Pause/Play Music", ["M"], () => this.playAudio = !this.playAudio);
+    this.new_line();
     this.new_line();
     this.live_string(box => {
       box.textContent = "Time: " + prettify_hour(this.hour_of_day)
     });
   }
-
+  
   cleanRipples(time){
     if (this.ripplesBirth.length === 0){
       return;
@@ -581,7 +587,12 @@ export class Ripple_Rampage extends Scene {
     context.scratchpad: {controls: Walk_Movement}
     context.scenes: {ripple_Rampage: Ripple_Rampage}
     */
-
+    if (this.playAudio){
+      this.audio.play();
+    }
+    else{
+      this.audio.pause();
+    }
     // this makes clear what I am calling
     const GL = context.context;
     
