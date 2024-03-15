@@ -909,6 +909,7 @@ export class Ripple_Rampage extends Scene {
       console.log("resetting maze");
 
       if (this.tuto_index == 1) this.tuto_index = 2;
+      this.win_count %= 3;
 
       this.maze_props.length = (7 + 3 * this.win_count) * 60 / 7;
       this.maze_props.tiles.x = 7 + 3 * this.win_count;
@@ -929,7 +930,7 @@ export class Ripple_Rampage extends Scene {
       }
       this.reset_cloud();
       
-      this.win_count = (this.win_count + 1) % 3;
+      this.win_count += 1;
       this.resetGame = false;
       //reset maze, respawn cloud, unlock player position
     }

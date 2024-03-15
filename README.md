@@ -38,7 +38,7 @@ The `server.py` script has been modified so that when laucnhed it will automatic
 
 ![default screen at empty project](./images/current-progress.png)
 
-Once you are in the game you should see something similar to the picture above. The game is a 3D third-person game in which you are in a maze. Your goal is to find the cloud seen in the picture in the maze and bring it back to the start to make the little pond grow. The keybinds are the following
+Once you are in the game you should see something similar to the picture above. The game is a 3D third-person game in which you are in a maze. Your goal is to find the cloud seen in the picture in the maze and bring it back to the start to fill the well in the middle of the maze. The keybinds are the following
 
 |Action | Key |
 |-|-|
@@ -48,7 +48,9 @@ Once you are in the game you should see something similar to the picture above. 
 |Strafe right| d|
 |Jump| space|
 |Toggle flashlight| f|
-|Make it rain| Shift+R|
+|Make it rain| r |
+|Look around| mouse |
+|grab/let go | click |
 
 ## Suggestions to add code
 
