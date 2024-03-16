@@ -417,7 +417,6 @@ export class Walk_Movement extends Scene {
       this.speed *= this.speed_decay_factor;
     }
 
-    console.assert(this.momentum_vector[1] === 0);
     const new_position = this.position
       .plus(
         this.momentum_vector.times(prev_speed * dt)
