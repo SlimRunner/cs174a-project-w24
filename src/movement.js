@@ -61,12 +61,12 @@ export class Walk_Movement extends Scene {
     this.speed_limit = 8;
     this.speed_decay_factor = 0.8;
 
-    this.gravity = -40;
+    this.gravity = -30;
     this.min_height = 1.5;
     this.jump_thrust = 0;
     this.fall_speed = 0;
     this.height = this.min_height;
-    this.jumping_force = 1000;
+    this.jumping_force = 900/60;
 
     this.mouse = { from_center: vec(0, 0), enabled: true};
     this.mouse_enabled_canvases = new Set();
@@ -318,6 +318,7 @@ export class Walk_Movement extends Scene {
   }
 
   walk(state, dt) {
+    if (dt <= 0) dt = 1 / 60;
     let look_around_matrix = Mat4.identity();
     let {tiles: maze_mid} = this.maze_props();
     
@@ -384,23 +385,45 @@ export class Walk_Movement extends Scene {
       }
     }
 
-    if (!airborne && this.jump_thrust == 0) {
+    if (!airborne && this.jump_thrust === 0) {
       this.fall_speed = 0;
-    } else {
-      this.fall_speed += (this.jump_thrust + this.gravity) * dt;
+      console.log("1");
+    } else if (this.jump_thrust > 0) {
+      console.log("2");
+      const prev_jump_speed = this.fall_speed;
+      const acc_jump_delta = this.jump_thrust;
+      this.fall_speed += acc_jump_delta;
       this.jump_thrust = 0;
       this.height = Math.max(
-        this.height + this.fall_speed * dt,
+        this.height + prev_jump_speed * dt + acc_jump_delta * dt * dt * 0.5,
+        this.min_height
+      );
+    } else {
+      console.log("3");
+      const prev_jump_speed = this.fall_speed;
+      const acc_jump_delta = this.gravity * dt;
+      this.fall_speed += acc_jump_delta;
+      this.jump_thrust = 0;
+      this.height = Math.max(
+        this.height + prev_jump_speed * dt + acc_jump_delta * dt * 0.5,
         this.min_height
       );
     }
 
-    this.speed = min_abs(this.speed + this.thrust * dt, this.speed_limit);
+    const prev_speed = this.speed;
+    const acc_delta = this.thrust * dt;
+    this.speed = min_abs(this.speed + acc_delta, this.speed_limit);
     if (!(this.dir_flag & (dir.ALL)) && !airborne) {
       this.speed *= this.speed_decay_factor;
     }
 
-    const new_position = this.position.plus(this.momentum_vector.times(this.speed * dt));
+    console.assert(this.momentum_vector[1] === 0);
+    const new_position = this.position
+      .plus(
+        this.momentum_vector.times(prev_speed * dt)
+      ).plus(
+        this.momentum_vector.times(acc_delta * dt * 0.5)
+      );
     new_position[1] = this.height;
 
     let collision_detected = false;
