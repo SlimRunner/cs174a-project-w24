@@ -387,9 +387,7 @@ export class Walk_Movement extends Scene {
 
     if (!airborne && this.jump_thrust === 0) {
       this.fall_speed = 0;
-      console.log("1");
     } else if (this.jump_thrust > 0) {
-      console.log("2");
       const prev_jump_speed = this.fall_speed;
       const acc_jump_delta = this.jump_thrust;
       this.fall_speed += acc_jump_delta;
@@ -399,7 +397,6 @@ export class Walk_Movement extends Scene {
         this.min_height
       );
     } else {
-      console.log("3");
       const prev_jump_speed = this.fall_speed;
       const acc_jump_delta = this.gravity * dt;
       this.fall_speed += acc_jump_delta;
