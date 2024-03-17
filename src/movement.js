@@ -61,12 +61,12 @@ export class Walk_Movement extends Scene {
     this.speed_limit = 8;
     this.speed_decay_factor = 0.8;
 
-    this.gravity = -40;
+    this.gravity = -30;
     this.min_height = 1.5;
     this.jump_thrust = 0;
     this.fall_speed = 0;
     this.height = this.min_height;
-    this.jumping_force = 1000;
+    this.jumping_force = 900/60;
 
     this.mouse = { from_center: vec(0, 0), enabled: true};
     this.mouse_enabled_canvases = new Set();
@@ -318,6 +318,7 @@ export class Walk_Movement extends Scene {
   }
 
   walk(state, dt) {
+    if (dt <= 0) dt = 1 / 60;
     let look_around_matrix = Mat4.identity();
     let {tiles: maze_mid} = this.maze_props();
     
@@ -384,52 +385,85 @@ export class Walk_Movement extends Scene {
       }
     }
 
-    if (!airborne && this.jump_thrust == 0) {
+    if (!airborne && this.jump_thrust === 0) {
       this.fall_speed = 0;
-    } else {
-      this.fall_speed += (this.jump_thrust + this.gravity) * dt;
+    } else if (this.jump_thrust > 0) {
+      const prev_jump_speed = this.fall_speed;
+      const acc_jump_delta = this.jump_thrust;
+      this.fall_speed += acc_jump_delta;
       this.jump_thrust = 0;
       this.height = Math.max(
-        this.height + this.fall_speed * dt,
+        this.height + prev_jump_speed * dt + acc_jump_delta * dt * dt * 0.5,
+        this.min_height
+      );
+    } else {
+      const prev_jump_speed = this.fall_speed;
+      const acc_jump_delta = this.gravity * dt;
+      this.fall_speed += acc_jump_delta;
+      this.jump_thrust = 0;
+      this.height = Math.max(
+        this.height + prev_jump_speed * dt + acc_jump_delta * dt * 0.5,
         this.min_height
       );
     }
 
-    this.speed = min_abs(this.speed + this.thrust * dt, this.speed_limit);
+    const prev_speed = this.speed;
+    const acc_delta = this.thrust * dt;
+    this.speed = min_abs(this.speed + acc_delta, this.speed_limit);
     if (!(this.dir_flag & (dir.ALL)) && !airborne) {
       this.speed *= this.speed_decay_factor;
     }
 
-    const new_position = this.position.plus(this.momentum_vector.times(this.speed * dt));
+    const new_position = this.position
+      .plus(
+        this.momentum_vector.times(prev_speed * dt)
+      ).plus(
+        this.momentum_vector.times(acc_delta * dt * 0.5)
+      );
     new_position[1] = this.height;
 
     let collision_detected = false;
-    let r = 0.5;
+    let r = 0.8;
     let subdivisions = 16;
-    let next_tile = this_tile;
+    let tile_intersections = [];
     for(let i = 0; i<subdivisions; i++){
       let vertex = this.position.plus(vec3(r*Math.cos(i*2*Math.PI/subdivisions), 0, r*Math.sin(i*2*Math.PI/subdivisions)));
-      next_tile = this.compute_tile(vertex);
+      let next_tile = this.compute_tile(vertex);
       if (this_tile.state != next_tile.state){
         collision_detected = true;
-        console.log('detected');
-        break;
+        let uniqueTile = true;
+        for(let j=0; j<tile_intersections.length; j++){
+          if((tile_intersections[j].x === next_tile.x) && (tile_intersections[j].z === next_tile.z)){
+            uniqueTile = false;
+          }
+        }
+        if (uniqueTile){
+          tile_intersections.push(next_tile);
+        }
       }
     }
     
     if (!collision_detected) {
       this.position.forEach((_, i, arr) => arr[i] = new_position[i]);
     } else {
-      const collision_normal = vec3(this_tile.x - next_tile.x, 0, this_tile.z - next_tile.z);
-      collision_normal.normalize();
-      const collision_tangent = vec3(-collision_normal[2], 0, collision_normal[0]);
-      this.position_delta = this.momentum_vector.times(this.speed * dt);
-      // use vector projection to find the component of the momentum vector that is parallel to the collision normal
-      this.position_delta = vector_projection(
-        this.position_delta, collision_tangent
-      ).plus(collision_normal.times(0.01));
-      this.momentum_vector.subtract_by(collision_normal.times(2 * this.momentum_vector.dot(collision_normal)));
-      this.position.add_by(this.position_delta);
+      for (let i=0; i<tile_intersections.length; i++){
+        let next_tile = tile_intersections[i];
+        const collision_normal = vec3(this_tile.x - next_tile.x, 0, this_tile.z - next_tile.z);
+        collision_normal.normalize();
+        const collision_tangent = vec3(-collision_normal[2], 0, collision_normal[0]);
+        this.position_delta = this.momentum_vector.times(this.speed * dt);
+        // use vector projection to find the component of the momentum vector that is parallel to the collision normal
+        this.position_delta = vector_projection(
+          this.position_delta, collision_tangent
+        ).plus(collision_normal.times(0.01));
+        this.momentum_vector.subtract_by(collision_normal.times(2 * this.momentum_vector.dot(collision_normal)));
+        this.position.add_by(this.position_delta);
+        let check_tile = this.compute_tile(this.position);
+        if (check_tile.state === 0){
+          this.position.subtract_by(this.position_delta);
+          this.position.add_by(collision_normal.times(0.01));
+        }
+      }
     }
     this.position[1] = new_position[1];
 
