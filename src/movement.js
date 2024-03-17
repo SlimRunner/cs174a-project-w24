@@ -426,32 +426,47 @@ export class Walk_Movement extends Scene {
     new_position[1] = this.height;
 
     let collision_detected = false;
-    let r = 0.5;
+    let r = 0.8;
     let subdivisions = 16;
-    let next_tile = this_tile;
+    let tile_intersections = [];
     for(let i = 0; i<subdivisions; i++){
       let vertex = this.position.plus(vec3(r*Math.cos(i*2*Math.PI/subdivisions), 0, r*Math.sin(i*2*Math.PI/subdivisions)));
-      next_tile = this.compute_tile(vertex);
+      let next_tile = this.compute_tile(vertex);
       if (this_tile.state != next_tile.state){
         collision_detected = true;
-        console.log('detected');
-        break;
+        let uniqueTile = true;
+        for(let j=0; j<tile_intersections.length; j++){
+          if((tile_intersections[j].x === next_tile.x) && (tile_intersections[j].z === next_tile.z)){
+            uniqueTile = false;
+          }
+        }
+        if (uniqueTile){
+          tile_intersections.push(next_tile);
+        }
       }
     }
     
     if (!collision_detected) {
       this.position.forEach((_, i, arr) => arr[i] = new_position[i]);
     } else {
-      const collision_normal = vec3(this_tile.x - next_tile.x, 0, this_tile.z - next_tile.z);
-      collision_normal.normalize();
-      const collision_tangent = vec3(-collision_normal[2], 0, collision_normal[0]);
-      this.position_delta = this.momentum_vector.times(this.speed * dt);
-      // use vector projection to find the component of the momentum vector that is parallel to the collision normal
-      this.position_delta = vector_projection(
-        this.position_delta, collision_tangent
-      ).plus(collision_normal.times(0.01));
-      this.momentum_vector.subtract_by(collision_normal.times(2 * this.momentum_vector.dot(collision_normal)));
-      this.position.add_by(this.position_delta);
+      for (let i=0; i<tile_intersections.length; i++){
+        let next_tile = tile_intersections[i];
+        const collision_normal = vec3(this_tile.x - next_tile.x, 0, this_tile.z - next_tile.z);
+        collision_normal.normalize();
+        const collision_tangent = vec3(-collision_normal[2], 0, collision_normal[0]);
+        this.position_delta = this.momentum_vector.times(this.speed * dt);
+        // use vector projection to find the component of the momentum vector that is parallel to the collision normal
+        this.position_delta = vector_projection(
+          this.position_delta, collision_tangent
+        ).plus(collision_normal.times(0.01));
+        this.momentum_vector.subtract_by(collision_normal.times(2 * this.momentum_vector.dot(collision_normal)));
+        this.position.add_by(this.position_delta);
+        let check_tile = this.compute_tile(this.position);
+        if (check_tile.state === 0){
+          this.position.subtract_by(this.position_delta);
+          this.position.add_by(collision_normal.times(0.01));
+        }
+      }
     }
     this.position[1] = new_position[1];
 
